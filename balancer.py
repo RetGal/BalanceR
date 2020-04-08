@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.0.1'
+            self.bot_version = '0.0.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -711,6 +711,8 @@ def do_sell(quote: float, reference_price: float):
     while i <= CONF.trade_trials:
         sell_price = get_current_price() - (i / 2)
         order_size = calculate_sell_order_size(quote, reference_price, sell_price)
+        if order_size is None:
+            return None
         order = create_sell_order(sell_price, order_size)
         if order is None:
             LOG.error("Could not create sell order over %s", order_size)
@@ -1021,6 +1023,22 @@ def get_balance(currency: str):
         get_balance(currency)
 
 
+def get_unrealised_pnl():
+    try:
+        if CONF.exchange == 'bitmex':
+            position = EXCHANGE.private_get_position()
+            if not position:
+                return None
+            return position[0]['unrealisedPnl'] * CONF.satoshi_factor
+        else:
+            LOG.error("get_unrealised_pnl() is not implemented for %s", CONF.exchange)
+
+    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
+        sleep_for(4, 6)
+        get_unrealised_pnl()
+
+
 def sleep_for(greater: int, less: int = None):
     if less:
         seconds = round(random.uniform(greater, less), 3)
@@ -1073,7 +1091,7 @@ if __name__ == '__main__':
 
         if CONF.exchange == 'bitmex':
             BAL = get_crypto_balance()
-            TOTAL_BALANCE_IN_CRYPTO = BAL['total']
+            TOTAL_BALANCE_IN_CRYPTO = BAL['total'] + get_unrealised_pnl()
             CRYPTO_BALANCE = get_used_balance()
             PRICE = get_current_price()
             CRYPTO_BALANCE /= PRICE
