@@ -1,0 +1,27 @@
+[config]
+# exchange properties
+exchange = "EXCHANGE_NAME"
+api_key = "YOUR_KEY"
+api_secret = "YOUR_SECRET"
+test = False
+
+# currency properties
+pair = "BTC/USD"
+symbol = "XBTUSD"
+
+# bot properties
+crypto_quote_in_percent = 50
+tolerance_in_percent = 2
+period_in_minutes = 10
+daily_report = True
+trade_report = True
+trade_trials = 3
+
+# email properties
+recipient_addresses = "recipient@example.com,another.recipient@example.com"
+sender_address = "sender@example.com"
+sender_password = "password"
+mail_server = "mail.example.com"
+
+# information
+info = ""
