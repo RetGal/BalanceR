@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.0.3'
+            self.bot_version = '0.0.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -71,11 +71,34 @@ class Order:
     __slots__ = 'id', 'price', 'amount', 'side', 'datetime'
 
     def __init__(self, ccxt_order):
-        self.id = ccxt_order['id']
-        self.price = ccxt_order['price']
-        self.amount = ccxt_order['amount']
-        self.side = ccxt_order['side']
-        self.datetime = ccxt_order['datetime']
+        if 'id' in ccxt_order:
+            self.id = ccxt_order['id']
+        elif 'uuid' in ccxt_order:
+            self.id = ccxt_order['uuid']
+
+        if 'price' in ccxt_order:
+            self.price = ccxt_order['price']
+        elif 'info' in ccxt_order:
+            self.price = ccxt_order['info']['price']
+
+        if 'amount' in ccxt_order:
+            self.amount = ccxt_order['amount']
+        elif 'info' in ccxt_order:
+            self.amount = ccxt_order['info']['amount']
+
+        if 'side' in ccxt_order:
+            self.side = ccxt_order['side']
+        elif 'direction' in ccxt_order:
+            self.side = ccxt_order['direction']
+        elif 'info' in ccxt_order:
+            self.side = ccxt_order['info']['direction']
+
+        if 'datetime' in ccxt_order:
+            self.datetime = ccxt_order['datetime']
+        elif 'created_at' in ccxt_order:
+            self.datetime = ccxt_order['created_at']
+        elif 'info' in ccxt_order:
+            self.datetime = ccxt_order['info']['created_at']
 
     def __str__(self):
         return "{} order id: {}, price: {}, amount: {}, created: {}".format(self.side, self.id, self.price,
@@ -570,10 +593,17 @@ def get_open_order():
     :return: Order
     """
     try:
-        result = EXCHANGE.fetch_open_orders(CONF.pair, since=None, limit=2, params={'reverse': True})
-        if result is not None and len(result) > 0:
-            return Order(result[-1])
-        return None
+        # TODO close all orders?
+        if CONF.exchange == 'paymium':
+            result = EXCHANGE.private_get_user_orders({'active': True})
+            if result is not None and len(result) > 0:
+                return Order(result[0])
+            return None
+        else:
+            result = EXCHANGE.fetch_open_orders(CONF.pair, since=None, limit=2, params={'reverse': True})
+            if result is not None and len(result) > 0:
+                return Order(result[-1])
+            return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -670,7 +700,7 @@ def do_buy(quote: float, reference_price: float):
             return None
         sleep(90)
         order_status = fetch_order_status(order.id)
-        if order_status == 'open':
+        if order_status in ['open', 'active']:
             cancel_order(order)
             i += 1
             daily_report()
@@ -699,7 +729,7 @@ def do_sell(quote: float, reference_price: float):
             return None
         sleep(90)
         order_status = fetch_order_status(order.id)
-        if order_status == 'open':
+        if order_status  in ['open', 'active']:
             cancel_order(order)
             i += 1
             daily_report()
@@ -711,7 +741,7 @@ def do_sell(quote: float, reference_price: float):
     return create_market_sell_order(order_size)
 
 
-def calculate_buy_order_size(reference_quote:float, reference_price: float, actual_price: float):
+def calculate_buy_order_size(reference_quote: float, reference_price: float, actual_price: float):
     """
     Calculates the buy order size. Minus 1% for fees.
     :param reference_quote
@@ -724,7 +754,7 @@ def calculate_buy_order_size(reference_quote:float, reference_price: float, actu
     return round(size - 0.000000006, 8) if size > MIN_ORDER_SIZE else None
 
 
-def calculate_sell_order_size(reference_quote:float, reference_price: float, actual_price: float):
+def calculate_sell_order_size(reference_quote: float, reference_price: float, actual_price: float):
     """
     Calculates the sell order size. Minus 1% for fees.
     :param reference_quote
@@ -744,7 +774,15 @@ def fetch_order_status(order_id: str):
     output: status of the order (open, closed)
     """
     try:
-        return EXCHANGE.fetch_order_status(order_id)
+        if CONF.exchange == 'paymium':
+            # TODO
+            # return EXCHANGE.private_get_user_orders({'uuid': order_id})
+            orders = EXCHANGE.private_get_user_orders({'uuid': order_id})
+            for x in orders:
+                if x['uuid'] == order_id:
+                    return x['state']
+        else:
+            return EXCHANGE.fetch_order_status(order_id)
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -758,8 +796,8 @@ def cancel_order(order: Order):
     """
     try:
         if order is not None:
-            status = EXCHANGE.fetch_order_status(order.id)
-            if status == 'open':
+            status = fetch_order_status(order.id)
+            if status in ['open', 'active']:
                 EXCHANGE.cancel_order(order.id)
                 LOG.info('Canceled %s', str(order))
             else:
@@ -1029,9 +1067,9 @@ if __name__ == '__main__':
 
     write_control_file()
 
-    ORDER = get_open_order()
-    if ORDER is not None:
-        cancel_order(ORDER)
+    # ORDER = get_open_order()
+    # if ORDER is not None:
+    #     cancel_order(ORDER)
 
     while 1:
 
