@@ -1020,7 +1020,7 @@ def get_balance(currency: str):
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        get_balance(currency)
+        return get_balance(currency)
 
 
 def get_unrealised_pnl():
@@ -1104,7 +1104,7 @@ if __name__ == '__main__':
 
         CRYPTO_QUOTE = 100 / (TOTAL_BALANCE_IN_CRYPTO / CRYPTO_BALANCE) if CRYPTO_BALANCE > 0 else 0
 
-        LOG.info('BTC total/crypto quote %f/%f %f @ %f', TOTAL_BALANCE_IN_CRYPTO, CRYPTO_BALANCE, CRYPTO_QUOTE, PRICE)
+        LOG.info('BTC total/crypto quote %f/%f %f @ %d', TOTAL_BALANCE_IN_CRYPTO, CRYPTO_BALANCE, CRYPTO_QUOTE, PRICE)
 
         if CRYPTO_QUOTE < CONF.crypto_quote_in_percent - CONF.tolerance_in_percent:
             ORDER = do_buy(CONF.crypto_quote_in_percent - CRYPTO_QUOTE, PRICE)
