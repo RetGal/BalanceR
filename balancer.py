@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.0.2'
+            self.bot_version = '0.0.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -333,8 +333,12 @@ def append_balances(part: dict, margin_balance: dict, wallet_balance: float, dai
     """
     Appends liquidation price, wallet balance, margin balance (including stats), used margin and leverage information
     """
-    part['mail'].append("Wallet balance {}: {:>18.4f}".format(CONF.base, wallet_balance))
-    part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
+    if wallet_balance is None:
+        part['mail'].append("Wallet balance {}: {:>18}".format(CONF.base, 'n/a'))
+        part['csv'].append("Wallet balance {}:;n/a".format(CONF.base))
+    else:
+        part['mail'].append("Wallet balance {}: {:>18.4f}".format(CONF.base, wallet_balance))
+        part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
     price = get_current_price()
     today = calculate_daily_statistics(margin_balance['total'], price, daily)
     append_margin_change(part, today, CONF.base)
@@ -346,13 +350,13 @@ def append_balances(part: dict, margin_balance: dict, wallet_balance: float, dai
         actual_leverage = get_margin_leverage()
         part['mail'].append("Actual leverage: {:>18.2f}%".format(actual_leverage))
         part['csv'].append("Actual leverage:;{:.2f}%".format(used_margin))
-    elif CONF.exchange == 'liquid':
-        part['mail'].append("Actual leverage: {:>18}".format('n/a'))
-        part['csv'].append("Actual leverage:;{}".format('n/a'))
-    else:
+    elif CONF.exchange == 'bitmex':
         actual_leverage = get_margin_leverage()
         part['mail'].append("Actual leverage: {:>18.2f}x".format(actual_leverage))
         part['csv'].append("Actual leverage:;{:.2f}x".format(actual_leverage))
+    else:
+        part['mail'].append("Actual leverage: {:>18}".format('n/a'))
+        part['csv'].append("Actual leverage:;{}".format('n/a'))
     used_balance = get_used_balance()
     if used_balance is None:
         used_balance = 'n/a'
@@ -467,21 +471,21 @@ def get_margin_balance():
     return: balance in fiat
     """
     try:
-        if CONF.exchange == 'bitmex':
-            bal = EXCHANGE.fetch_balance()[CONF.base]
-        elif CONF.exchange == 'kraken':
+        if CONF.exchange == 'kraken':
             bal = EXCHANGE.private_post_tradebalance({'asset': CONF.base})['result']
             bal['free'] = float(bal['mf'])
             bal['total'] = float(bal['e'])
             bal['used'] = float(bal['m'])
         elif CONF.exchange == 'liquid':
             bal = get_crypto_balance()
+        else:
+            bal = EXCHANGE.fetch_balance()[CONF.base]
         return bal
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        get_margin_balance()
+        return get_margin_balance()
 
 
 def get_margin_leverage():
@@ -496,15 +500,14 @@ def get_margin_leverage():
             if hasattr(result, 'ml'):
                 return float(result['ml'])
             return 0
-        if CONF.exchange == 'liquid':
-            # TODO poi = get_position_info()
+        else:
             LOG.error("get_margin_leverage() not yet implemented for %s", CONF.exchange)
             return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        get_margin_leverage()
+        return get_margin_leverage()
 
 
 def get_net_deposits():
@@ -532,34 +535,7 @@ def get_net_deposits():
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        get_net_deposits()
-
-
-def get_position_info():
-    """
-    Fetch position information
-    """
-    try:
-        if CONF.exchange == 'bitmex':
-            response = EXCHANGE.private_get_position()
-            if response and response[0] and response[0]['avgEntryPrice']:
-                return response[0]
-            return None
-        if CONF.exchange == 'kraken':
-            LOG.error("get_position_info() not yet implemented for kraken")
-            return None
-        if CONF.exchange == 'liquid':
-            response = EXCHANGE.private_get_trading_accounts()
-            for pos in response:
-                if pos['currency_pair_code'] == CONF.symbol and pos['funding_currency'] == CONF.base and \
-                        float(pos['margin']) > 0:
-                    return pos
-            return None
-
-    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
-        LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
-        sleep_for(4, 6)
-        get_position_info()
+        return get_net_deposits()
 
 
 def get_wallet_balance():
@@ -578,11 +554,14 @@ def get_wallet_balance():
                 for bal in result:
                     if bal['currency'] == CONF.base:
                         return float(bal['balance'])
+        else:
+            LOG.error("get_wallet_balance() is not implemented for %s", CONF.exchange)
+            return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        get_wallet_balance()
+        return get_wallet_balance()
 
 
 def get_open_order():
@@ -599,7 +578,7 @@ def get_open_order():
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        get_open_order()
+        return get_open_order()
 
 
 def get_closed_order():
@@ -648,9 +627,10 @@ def get_current_price(limit: int = None, attempts: int = 0):
 
 
 def connect_to_exchange():
-    exchanges = {'bitmex': ccxt.bitmex,
-                 'kraken': ccxt.kraken,
-                 'liquid': ccxt.liquid}
+    exchanges = {}
+    for id in ccxt.exchanges:
+        exchange = getattr(ccxt, id)
+        exchanges[id] = exchange
 
     exchange = exchanges[CONF.exchange]({
         'enableRateLimit': True,
@@ -769,7 +749,7 @@ def fetch_order_status(order_id: str):
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        fetch_order_status(order_id)
+        return fetch_order_status(order_id)
 
 
 def cancel_order(order: Order):
@@ -794,45 +774,6 @@ def cancel_order(order: Order):
         cancel_order(order)
 
 
-def close_position(order_type: str, price=None):
-    """
-    Close any open position
-    """
-    try:
-        LOG.info('Close position %s', CONF.symbol)
-        if CONF.exchange == 'bitmex':
-            if price is None:
-                close_order = EXCHANGE.private_post_order_closeposition({'symbol': CONF.symbol})
-            else:
-                close_order = EXCHANGE.private_post_order_closeposition({'symbol': CONF.symbol, 'price': price})
-        elif CONF.exchange == 'kraken':
-            if price is None:
-                close_order = EXCHANGE.create_market_order(CONF.pair, order_type.lower(), 0.0,
-                                                           {'leverage': CONF.leverage_default})
-            else:
-                close_order = EXCHANGE.create_limit_order(CONF.pair, order_type.lower(), 0.0, price,
-                                                          {'leverage': CONF.leverage_default})
-        elif CONF.exchange == 'liquid':
-            close_order = EXCHANGE.private_put_trades_close_all()
-        if close_order is not None and hasattr(close_order, 'id'):
-            clorder = Order(close_order)
-            LOG.info('Created %s', str(clorder))
-            return clorder
-        return None
-    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
-        # no retry in case of "no volume to close position" (kraken specific error)
-        if "volume to close position" in str(error.args):
-            LOG.warning('No volume to close position')
-            return None
-        # no retry in case of "system is currently overloaded" (bitmex specific error)
-        if "overloaded" in str(error.args):
-            LOG.info('Exchange is overloaded, close position is postponed')
-            return None
-        LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
-        sleep_for(4, 6)
-        close_position(order_type, price)
-
-
 def create_sell_order(price: float, amount_crypto: float):
     """
     Creates a sell order
@@ -847,11 +788,11 @@ def create_sell_order(price: float, amount_crypto: float):
             price = round(price * 2) / 2
             order_size = round(price * amount_crypto)
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, order_size, price)
-        elif CONF.exchange == 'kraken':
-            new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price)
         elif CONF.exchange == 'liquid':
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price,
                                                          {'funding_currency': CONF.base})
+        else:
+            new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price)
         norder = Order(new_order)
         LOG.info('Created %s', str(norder))
         return norder
@@ -865,7 +806,7 @@ def create_sell_order(price: float, amount_crypto: float):
             return None
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        create_sell_order(price, amount_crypto)
+        return create_sell_order(price, amount_crypto)
 
 
 def create_buy_order(price: float, amount_crypto: float):
@@ -886,6 +827,9 @@ def create_buy_order(price: float, amount_crypto: float):
         elif CONF.exchange == 'liquid':
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price,
                                                         {'funding_currency': CONF.base})
+        else:
+            new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price)
+
         norder = Order(new_order)
         LOG.info('Created %s', str(norder))
         return norder
@@ -899,7 +843,7 @@ def create_buy_order(price: float, amount_crypto: float):
             return None
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        create_buy_order(price, amount_crypto)
+        return create_buy_order(price, amount_crypto)
 
 
 def create_market_sell_order(amount_crypto: float):
@@ -910,7 +854,7 @@ def create_market_sell_order(amount_crypto: float):
     try:
         if CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_crypto)
-        elif CONF.exchange in ['liquid', 'bitmex']:
+        else:
             amount_fiat = round(amount_crypto * get_current_price())
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_fiat)
         norder = Order(new_order)
@@ -923,7 +867,7 @@ def create_market_sell_order(amount_crypto: float):
             return None
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        create_market_sell_order(amount_crypto)
+        return create_market_sell_order(amount_crypto)
 
 
 def create_market_buy_order(amount_crypto: float):
@@ -940,6 +884,8 @@ def create_market_buy_order(amount_crypto: float):
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'oflags': 'fcib'})
         elif CONF.exchange == 'liquid':
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'funding_currency': CONF.base})
+        else:
+            new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto)
         norder = Order(new_order)
         LOG.info('Created market %s', str(norder))
         return norder
@@ -950,7 +896,7 @@ def create_market_buy_order(amount_crypto: float):
             return None
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        create_market_buy_order(amount_crypto)
+        return create_market_buy_order(amount_crypto)
 
 
 def get_used_balance():
@@ -967,13 +913,13 @@ def get_used_balance():
         if CONF.exchange == 'kraken':
             result = EXCHANGE.private_post_tradebalance()['result']
             return round(float(result['e']) - float(result['mf']))
-        if CONF.exchange == 'liquid':
+        else:
             return round(get_crypto_balance()['used'] * get_current_price())
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        get_used_balance()
+        return get_used_balance()
 
 
 def get_crypto_balance():
@@ -1036,7 +982,7 @@ def get_unrealised_pnl():
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        get_unrealised_pnl()
+        return get_unrealised_pnl()
 
 
 def sleep_for(greater: int, less: int = None):
