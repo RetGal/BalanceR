@@ -686,7 +686,7 @@ def do_buy(quote: float, reference_price: float):
             return None
         order = create_buy_order(buy_price, order_size)
         if order is None:
-            LOG.error("Could not create buy order over %s", order_size)
+            LOG.warning("Could not create buy order over %s", order_size)
             return None
         sleep(90)
         order_status = fetch_order_status(order.id)
@@ -715,7 +715,7 @@ def do_sell(quote: float, reference_price: float):
             return None
         order = create_sell_order(sell_price, order_size)
         if order is None:
-            LOG.error("Could not create sell order over %s", order_size)
+            LOG.warning("Could not create sell order over %s", order_size)
             return None
         sleep(90)
         order_status = fetch_order_status(order.id)
@@ -1104,7 +1104,7 @@ if __name__ == '__main__':
 
         CRYPTO_QUOTE = 100 / (TOTAL_BALANCE_IN_CRYPTO / CRYPTO_BALANCE) if CRYPTO_BALANCE > 0 else 0
 
-        LOG.info('BTC total/crypto quote %f/%f %f', TOTAL_BALANCE_IN_CRYPTO, CRYPTO_BALANCE, CRYPTO_QUOTE)
+        LOG.info('BTC total/crypto quote %f/%f %f @ %f', TOTAL_BALANCE_IN_CRYPTO, CRYPTO_BALANCE, CRYPTO_QUOTE, PRICE)
 
         if CRYPTO_QUOTE < CONF.crypto_quote_in_percent - CONF.tolerance_in_percent:
             ORDER = do_buy(CONF.crypto_quote_in_percent - CRYPTO_QUOTE, PRICE)
