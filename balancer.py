@@ -631,7 +631,7 @@ def get_closed_order():
         get_closed_order()
 
 
-def get_current_price(limit: int = None, attempts: int = 0):
+def get_current_price(attempts: int = 0, limit: int = None):
     """
     Fetches the current BTC/USD exchange rate
     In case of failure, the function calls itself again until success
@@ -642,16 +642,16 @@ def get_current_price(limit: int = None, attempts: int = 0):
         if not price:
             LOG.warning('Price was None')
             sleep_for(1, 2)
-            get_current_price(limit, attempts)
+            return get_current_price(attempts, limit)
         else:
             return int(price)
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
-        LOG.debug('Got an error %s %s, retrying in 5 seconds...', type(error).__name__, str(error.args))
+        LOG.info('Got an error %s %s, retrying in 5 seconds...', type(error).__name__, str(error.args))
         attempts += 1
         if not limit or attempts < limit:
             sleep_for(4, 6)
-            get_current_price(limit, attempts)
+            return get_current_price(attempts, limit)
         else:
             return 0
 
