@@ -26,7 +26,7 @@ STATS = None
 EMAIL_SENT = False
 EMAIL_ONLY = False
 RESET = False
-STOP_ERRORS = ['nsufficient', 'too low', 'not_enough_free_balance', 'margin_below', 'liquidation price']
+STOP_ERRORS = ['nsufficient', 'too low', 'not_enough', 'margin_below', 'liquidation price', 'nvalid arguments']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
 
@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.0.4'
+            self.bot_version = '0.0.5'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
