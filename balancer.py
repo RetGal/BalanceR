@@ -693,6 +693,7 @@ def do_buy(quote: float, reference_price: float):
         buy_price = get_current_price() + (i / 2)
         order_size = calculate_buy_order_size(quote, reference_price, buy_price)
         if order_size is None:
+            LOG.info("Buy order size below minimum")
             return None
         order = create_buy_order(buy_price, order_size)
         if order is None:
@@ -722,6 +723,7 @@ def do_sell(quote: float, reference_price: float):
         sell_price = get_current_price() - (i / 2)
         order_size = calculate_sell_order_size(quote, reference_price, sell_price)
         if order_size is None:
+            LOG.info("Sell order size below minimum")
             return None
         order = create_sell_order(sell_price, order_size)
         if order is None:
