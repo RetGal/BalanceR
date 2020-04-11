@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.0.5'
+            self.bot_version = '0.0.6'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -826,9 +826,6 @@ def create_sell_order(price: float, amount_crypto: float):
             price = round(price * 2) / 2
             order_size = round(price * amount_crypto)
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, order_size, price)
-        elif CONF.exchange == 'liquid':
-            new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price,
-                                                         {'funding_currency': CONF.base})
         else:
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price)
         norder = Order(new_order)
@@ -862,9 +859,6 @@ def create_buy_order(price: float, amount_crypto: float):
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, order_size, price)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price, {'oflags': 'fcib'})
-        elif CONF.exchange == 'liquid':
-            new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price,
-                                                        {'funding_currency': CONF.base})
         else:
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price)
 
@@ -920,8 +914,6 @@ def create_market_buy_order(amount_crypto: float):
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_fiat)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'oflags': 'fcib'})
-        elif CONF.exchange == 'liquid':
-            new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'funding_currency': CONF.base})
         else:
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto)
         norder = Order(new_order)
