@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.0.6'
+            self.bot_version = '0.0.7'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1058,6 +1058,9 @@ if __name__ == '__main__':
         sys.exit(0)
 
     write_control_file()
+
+    if CONF.exchange == 'kraken':
+        MIN_ORDER_SIZE = 0.002
 
     # ORDER = get_open_order()
     # if ORDER is not None:
