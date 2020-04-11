@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.0.7'
+            self.bot_version = '0.0.8'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1015,6 +1015,39 @@ def get_unrealised_pnl():
         return get_unrealised_pnl()
 
 
+def get_position_info():
+    try:
+        if CONF.exchange == 'bitmex':
+            position = EXCHANGE.private_get_position()
+            if not position:
+                return None
+            return position[0]
+        else:
+            LOG.error("get_postion_info() is not implemented for %s", CONF.exchange)
+
+    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
+        sleep_for(4, 6)
+        return get_unrealised_pnl()
+
+
+def set_leverage(new_leverage: float):
+    try:
+        if CONF.exchange == 'bitmex':
+            EXCHANGE.private_post_position_leverage({'symbol': CONF.symbol, 'leverage': new_leverage})
+            LOG.info('Setting leverage to %s', new_leverage)
+        else:
+            LOG.error("set_leverage() not yet implemented for %s", CONF.exchange)
+
+    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        if any(e in str(error.args) for e in STOP_ERRORS):
+            LOG.warning('Insufficient available balance - not lowering leverage to %s', new_leverage)
+            return
+        LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
+        sleep_for(4, 6)
+        return set_leverage(new_leverage)
+
+
 def sleep_for(greater: int, less: int = None):
     if less:
         seconds = round(random.uniform(greater, less), 3)
@@ -1062,6 +1095,9 @@ if __name__ == '__main__':
     if CONF.exchange == 'kraken':
         MIN_ORDER_SIZE = 0.002
 
+    if CONF.exchange == 'bitmex':
+        set_leverage(0)
+
     # ORDER = get_open_order()
     # if ORDER is not None:
     #     cancel_order(ORDER)
@@ -1069,11 +1105,12 @@ if __name__ == '__main__':
     while 1:
 
         if CONF.exchange == 'bitmex':
+            POS = get_position_info()
             BAL = get_crypto_balance()
-            TOTAL_BALANCE_IN_CRYPTO = BAL['total'] + get_unrealised_pnl()
-            CRYPTO_BALANCE = get_used_balance()
-            PRICE = get_current_price()
-            CRYPTO_BALANCE /= PRICE
+            # aka margin balance
+            TOTAL_BALANCE_IN_CRYPTO = BAL['total']
+            PRICE = POS['lastPrice']
+            CRYPTO_BALANCE = (abs(POS['foreignNotional']) / POS['avgEntryPrice'] * PRICE) / POS['avgEntryPrice']
         else:
             CRYPTO_BALANCE = get_crypto_balance()['total']
             FIAT_BALANCE = get_fiat_balance()['total']
