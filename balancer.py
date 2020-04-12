@@ -26,6 +26,7 @@ STATS = None
 EMAIL_SENT = False
 EMAIL_ONLY = False
 RESET = False
+STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['nsufficient', 'too low', 'not_enough', 'margin_below', 'liquidation price', 'nvalid arguments']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
@@ -37,7 +38,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.0.8'
+            self.bot_version = '0.0.9'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -125,7 +126,7 @@ class Stats:
 
     def get_day(self, day_of_year: int):
         matched = filter(lambda element: element['day'] == day_of_year, self.days)
-        if matched is not None:
+        if matched:
             for day in matched:
                 return day
         return None
@@ -143,7 +144,7 @@ def function_logger(console_level: int, log_file: str, file_level: int = None):
     ch.setFormatter(logging.Formatter('%(asctime)s: %(message)s', '%Y-%m-%d %H:%M:%S'))
     logger.addHandler(ch)
 
-    if file_level is not None:
+    if file_level:
         fh = RotatingFileHandler("{}.log".format(log_file), mode='a', maxBytes=5 * 1024 * 1024, backupCount=4,
                                  encoding=None, delay=0)
         fh.setLevel(file_level)
@@ -268,7 +269,8 @@ def create_report_part_settings():
 def create_mail_part_general():
     general = ["Generated: {:>28}".format(str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"),
                "Bot: {:>30}".format(INSTANCE + '@' + socket.gethostname()),
-               "Version: {:>26}".format(CONF.bot_version)]
+               "Version: {:>26}".format(CONF.bot_version),
+               "Running since: {:>20} UTC".format(str(STARTED))]
     return general
 
 
@@ -442,7 +444,7 @@ def calculate_daily_statistics(m_bal: float, price: float, update_stats: bool):
         STATS.add_day(int(datetime.date.today().strftime("%Y%j")), today)
         persist_statistics()
     before_24h = STATS.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
-    if before_24h is not None:
+    if before_24h:
         today['mBalChan24'] = round((today['mBal'] / before_24h['mBal'] - 1) * 100, 2)
         if 'price' in before_24h:
             today['priceChan24'] = round((today['price'] / before_24h['price'] - 1) * 100, 2)
@@ -523,9 +525,8 @@ def get_margin_leverage():
             if hasattr(result, 'ml'):
                 return float(result['ml'])
             return 0
-        else:
-            LOG.error("get_margin_leverage() not yet implemented for %s", CONF.exchange)
-            return None
+        LOG.error("get_margin_leverage() not yet implemented for %s", CONF.exchange)
+        return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -573,13 +574,13 @@ def get_wallet_balance():
             return float(EXCHANGE.private_post_tradebalance({'asset': asset})['result']['tb'])
         if CONF.exchange == 'liquid':
             result = EXCHANGE.private_get_accounts_balance()
-            if result is not None:
+            if result:
                 for bal in result:
                     if bal['currency'] == CONF.base:
                         return float(bal['balance'])
         else:
             LOG.error("get_wallet_balance() is not implemented for %s", CONF.exchange)
-            return None
+        return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -587,28 +588,27 @@ def get_wallet_balance():
         return get_wallet_balance()
 
 
-def get_open_order():
+def get_open_orders():
     """
-    Gets current open order
-    :return: Order
+    Gets open orders
+    :return: [Order]
     """
     try:
-        # TODO close all orders?
         if CONF.exchange == 'paymium':
-            result = EXCHANGE.private_get_user_orders({'active': True})
-            if result is not None and len(result) > 0:
-                return Order(result[0])
-            return None
+            orders = EXCHANGE.private_get_user_orders({'active': True})
         else:
-            result = EXCHANGE.fetch_open_orders(CONF.pair, since=None, limit=2, params={'reverse': True})
-            if result is not None and len(result) > 0:
-                return Order(result[-1])
-            return None
+            orders = EXCHANGE.fetch_open_orders(CONF.pair, since=None, limit=20, params={'reverse': True})
+        if orders:
+            open_orders = []
+            for order in orders:
+                open_orders.append(Order(order))
+            return open_orders
+        return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        return get_open_order()
+        return get_open_orders()
 
 
 def get_closed_order():
@@ -618,7 +618,7 @@ def get_closed_order():
     """
     try:
         result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=2, params={'reverse': True})
-        if result is not None and len(result) > 0:
+        if result:
             orders = sorted(result, key=lambda order: order['datetime'])
             last_order = Order(orders[-1])
             LOG.info('Last %s', str(last_order))
@@ -628,7 +628,7 @@ def get_closed_order():
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        get_closed_order()
+        return get_closed_order()
 
 
 def get_current_price(attempts: int = 0, limit: int = None):
@@ -643,8 +643,7 @@ def get_current_price(attempts: int = 0, limit: int = None):
             LOG.warning('Price was None')
             sleep_for(1, 2)
             return get_current_price(attempts, limit)
-        else:
-            return int(price)
+        return int(price)
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.info('Got an error %s %s, retrying in 5 seconds...', type(error).__name__, str(error.args))
@@ -652,8 +651,7 @@ def get_current_price(attempts: int = 0, limit: int = None):
         if not limit or attempts < limit:
             sleep_for(4, 6)
             return get_current_price(attempts, limit)
-        else:
-            return 0
+    return 0
 
 
 def connect_to_exchange():
@@ -731,7 +729,7 @@ def do_sell(quote: float, reference_price: float):
             return None
         sleep(90)
         order_status = fetch_order_status(order.id)
-        if order_status  in ['open', 'active']:
+        if order_status in ['open', 'active']:
             cancel_order(order)
             i += 1
             daily_report()
@@ -777,14 +775,12 @@ def fetch_order_status(order_id: str):
     """
     try:
         if CONF.exchange == 'paymium':
-            # TODO
-            # return EXCHANGE.private_get_user_orders({'uuid': order_id})
-            orders = EXCHANGE.private_get_user_orders({'uuid': order_id})
-            for x in orders:
-                if x['uuid'] == order_id:
-                    return x['state']
-        else:
-            return EXCHANGE.fetch_order_status(order_id)
+            order = EXCHANGE.private_get_user_orders({'uuid': order_id})
+            if order:
+                return order['state']
+            LOG.warning('Order with id %s not found', order_id)
+            return 'unknown'
+        return EXCHANGE.fetch_order_status(order_id)
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -797,7 +793,7 @@ def cancel_order(order: Order):
     Cancels an order
     """
     try:
-        if order is not None:
+        if order:
             status = fetch_order_status(order.id)
             if status in ['open', 'active']:
                 EXCHANGE.cancel_order(order.id)
@@ -945,8 +941,7 @@ def get_used_balance():
         if CONF.exchange == 'kraken':
             result = EXCHANGE.private_post_tradebalance()['result']
             return round(float(result['e']) - float(result['mf']))
-        else:
-            return round(get_crypto_balance()['used'] * get_current_price())
+        return round(get_crypto_balance()['used'] * get_current_price())
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -982,7 +977,7 @@ def get_balance(currency: str):
 
         # TODO check
         result = EXCHANGE.private_get_trading_accounts()
-        if result is not None:
+        if result:
             for acc in result:
                 if acc['currency_pair_code'] == CONF.symbol and float(acc['margin']) > 0:
                     return {'used': float(acc['margin']), 'free': float(acc['free_margin']),
@@ -990,10 +985,12 @@ def get_balance(currency: str):
 
         # no position => return wallet balance
         result = EXCHANGE.private_get_accounts_balance()
-        if result is not None:
+        if result:
             for bal in result:
                 if bal['currency'] == currency:
                     return {'used': 0, 'free': float(bal['balance']), 'total': float(bal['balance'])}
+        LOG.warning('Could not get balance for liquid')
+        return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -1001,36 +998,20 @@ def get_balance(currency: str):
         return get_balance(currency)
 
 
-def get_unrealised_pnl():
-    try:
-        if CONF.exchange == 'bitmex':
-            position = EXCHANGE.private_get_position()
-            if not position:
-                return None
-            return position[0]['unrealisedPnl'] * CONF.satoshi_factor
-        else:
-            LOG.error("get_unrealised_pnl() is not implemented for %s", CONF.exchange)
-
-    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
-        LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
-        sleep_for(4, 6)
-        return get_unrealised_pnl()
-
-
 def get_position_info():
     try:
         if CONF.exchange == 'bitmex':
             position = EXCHANGE.private_get_position()
-            if not position:
-                return None
-            return position[0]
-        else:
-            LOG.error("get_postion_info() is not implemented for %s", CONF.exchange)
+            if position:
+                return position[0]
+            return None
+        LOG.error("get_postion_info() is not implemented for %s", CONF.exchange)
+        return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        return get_unrealised_pnl()
+        return get_position_info()
 
 
 def set_leverage(new_leverage: float):
@@ -1040,11 +1021,12 @@ def set_leverage(new_leverage: float):
             LOG.info('Setting leverage to %s', new_leverage)
         else:
             LOG.error("set_leverage() not yet implemented for %s", CONF.exchange)
+        return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         if any(e in str(error.args) for e in STOP_ERRORS):
             LOG.warning('Insufficient available balance - not lowering leverage to %s', new_leverage)
-            return
+            return None
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return set_leverage(new_leverage)
@@ -1059,7 +1041,7 @@ def sleep_for(greater: int, less: int = None):
 
 
 def do_post_trade_action():
-    if ORDER is not None:
+    if ORDER:
         LOG.info('Filled %s', str(ORDER))
         trade_report()
 
@@ -1100,9 +1082,10 @@ if __name__ == '__main__':
     if CONF.exchange == 'bitmex':
         set_leverage(0)
 
-    # ORDER = get_open_order()
-    # if ORDER is not None:
-    #     cancel_order(ORDER)
+    # ORDERS = get_open_orders()
+    # if ORDERS:
+    #     for ORDER in ORDERS:
+    #         cancel_order(ORDER)
 
     while 1:
 
