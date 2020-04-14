@@ -359,7 +359,7 @@ def append_balances(part: dict, margin_balance: dict, wallet_balance: float, dai
     Appends liquidation price, wallet balance, margin balance (including stats), used margin and leverage information
     """
     if wallet_balance is None:
-        part['mail'].append("Wallet balance {}: {:>18}".format(CONF.base, 'n/a'))
+        part['mail'].append("Wallet balance {}: {:>15}".format(CONF.base, 'n/a'))
         part['csv'].append("Wallet balance {}:;n/a".format(CONF.base))
     else:
         part['mail'].append("Wallet balance {}: {:>18.4f}".format(CONF.base, wallet_balance))
