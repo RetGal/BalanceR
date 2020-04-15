@@ -10,12 +10,12 @@ import smtplib
 import socket
 import sys
 import time
-from time import sleep
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from logging.handlers import RotatingFileHandler
+from time import sleep
 
 import ccxt
 import requests
@@ -38,7 +38,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.0.9'
+            self.bot_version = '0.1.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1046,6 +1046,14 @@ def do_post_trade_action():
         trade_report()
 
 
+def meditate(quote: float, price: float):
+    if quote < CONF.crypto_quote_in_percent - CONF.tolerance_in_percent:
+        return do_buy(CONF.crypto_quote_in_percent - quote, price)
+    if quote > CONF.crypto_quote_in_percent + CONF.tolerance_in_percent:
+        return do_sell(quote - CONF.crypto_quote_in_percent, price)
+    return None
+
+
 if __name__ == '__main__':
     print('Starting BalanceR Bot')
     print('ccxt version:', ccxt.__version__)
@@ -1091,9 +1099,8 @@ if __name__ == '__main__':
 
         if CONF.exchange == 'bitmex':
             POS = get_position_info()
-            BAL = get_crypto_balance()
             # aka margin balance
-            TOTAL_BALANCE_IN_CRYPTO = BAL['total']
+            TOTAL_BALANCE_IN_CRYPTO = get_crypto_balance()['total']
             PRICE = POS['lastPrice']
             if POS['avgEntryPrice']:
                 CRYPTO_BALANCE = (abs(POS['foreignNotional']) / POS['avgEntryPrice'] * PRICE) / POS['avgEntryPrice']
@@ -1103,20 +1110,12 @@ if __name__ == '__main__':
             CRYPTO_BALANCE = get_crypto_balance()['total']
             FIAT_BALANCE = get_fiat_balance()['total']
             PRICE = get_current_price()
-            FIAT_BALANCE_IN_CRYPTO = FIAT_BALANCE / PRICE
-            TOTAL_BALANCE_IN_CRYPTO = CRYPTO_BALANCE + FIAT_BALANCE_IN_CRYPTO
+            TOTAL_BALANCE_IN_CRYPTO = CRYPTO_BALANCE + (FIAT_BALANCE / PRICE)
 
         CRYPTO_QUOTE = 100 / (TOTAL_BALANCE_IN_CRYPTO / CRYPTO_BALANCE) if CRYPTO_BALANCE > 0 else 0
-
         LOG.info('BTC total/crypto quote %f/%f %f @ %d', TOTAL_BALANCE_IN_CRYPTO, CRYPTO_BALANCE, CRYPTO_QUOTE, PRICE)
 
-        if CRYPTO_QUOTE < CONF.crypto_quote_in_percent - CONF.tolerance_in_percent:
-            ORDER = do_buy(CONF.crypto_quote_in_percent - CRYPTO_QUOTE, PRICE)
-            do_post_trade_action()
-        elif CRYPTO_QUOTE > CONF.crypto_quote_in_percent + CONF.tolerance_in_percent:
-            ORDER = do_sell(CRYPTO_QUOTE - CONF.crypto_quote_in_percent, PRICE)
-            do_post_trade_action()
-
+        ORDER = meditate(CRYPTO_QUOTE, PRICE)
+        do_post_trade_action()
         daily_report()
-
         sleep_for(CONF.period_in_seconds)
