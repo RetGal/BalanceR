@@ -1095,7 +1095,10 @@ if __name__ == '__main__':
             # aka margin balance
             TOTAL_BALANCE_IN_CRYPTO = BAL['total']
             PRICE = POS['lastPrice']
-            CRYPTO_BALANCE = (abs(POS['foreignNotional']) / POS['avgEntryPrice'] * PRICE) / POS['avgEntryPrice']
+            if POS['avgEntryPrice']:
+                CRYPTO_BALANCE = (abs(POS['foreignNotional']) / POS['avgEntryPrice'] * PRICE) / POS['avgEntryPrice']
+            else:
+                CRYPTO_BALANCE = 0
         else:
             CRYPTO_BALANCE = get_crypto_balance()['total']
             FIAT_BALANCE = get_fiat_balance()['total']
