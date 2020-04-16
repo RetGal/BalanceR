@@ -95,6 +95,17 @@ class BalancerTest(unittest.TestCase):
         self.assertAlmostEqual(50.05, quote, 2)
 
     @patch('balancer.logging')
+    def test_calculate_quote_lowest(self, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CRYPTO_BALANCE = 1294.79168016 / 6477
+        balancer.TOTAL_BALANCE_IN_CRYPTO = 2584.87168016 / 6477
+        balancer.PRICE = 0
+
+        quote = balancer.calculate_quote()
+
+        self.assertAlmostEqual(50.0911, quote, 3)
+
+    @patch('balancer.logging')
     def test_calculate_quote_high(self, mock_logger):
         balancer.LOG = mock_logger
         balancer.CRYPTO_BALANCE = 0.99
