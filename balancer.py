@@ -1054,6 +1054,12 @@ def meditate(quote: float, price: float):
     return None
 
 
+def calculate_quote():
+    crypto_quote = (CRYPTO_BALANCE / TOTAL_BALANCE_IN_CRYPTO) * 100 if CRYPTO_BALANCE > 0 else 0
+    LOG.info('%s total/crypto quote %f/%f %f @ %d', CONF.base, TOTAL_BALANCE_IN_CRYPTO, CRYPTO_BALANCE, crypto_quote, PRICE)
+    return crypto_quote
+
+
 if __name__ == '__main__':
     print('Starting BalanceR Bot')
     print('ccxt version:', ccxt.__version__)
@@ -1112,10 +1118,7 @@ if __name__ == '__main__':
             PRICE = get_current_price()
             TOTAL_BALANCE_IN_CRYPTO = CRYPTO_BALANCE + (FIAT_BALANCE / PRICE)
 
-        CRYPTO_QUOTE = 100 / (TOTAL_BALANCE_IN_CRYPTO / CRYPTO_BALANCE) if CRYPTO_BALANCE > 0 else 0
-        LOG.info('BTC total/crypto quote %f/%f %f @ %d', TOTAL_BALANCE_IN_CRYPTO, CRYPTO_BALANCE, CRYPTO_QUOTE, PRICE)
-
-        ORDER = meditate(CRYPTO_QUOTE, PRICE)
+        ORDER = meditate(calculate_quote(), PRICE)
         do_post_trade_action()
         daily_report()
         sleep_for(CONF.period_in_seconds)

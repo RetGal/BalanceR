@@ -72,6 +72,39 @@ class BalancerTest(unittest.TestCase):
         mock_do_buy.assert_not_called()
         mock_do_sell.assert_not_called()
 
+    @patch('balancer.logging')
+    def test_calculate_quote_very_low(self, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CRYPTO_BALANCE = 0.02
+        balancer.TOTAL_BALANCE_IN_CRYPTO = 1.00
+        balancer.PRICE = 0
+
+        quote = balancer.calculate_quote()
+
+        self.assertAlmostEqual(2, quote, 2)
+
+    @patch('balancer.logging')
+    def test_calculate_quote_low(self, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CRYPTO_BALANCE = 1.002
+        balancer.TOTAL_BALANCE_IN_CRYPTO = 2.002
+        balancer.PRICE = 0
+
+        quote = balancer.calculate_quote()
+
+        self.assertAlmostEqual(50.05, quote, 2)
+
+    @patch('balancer.logging')
+    def test_calculate_quote_high(self, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CRYPTO_BALANCE = 0.99
+        balancer.TOTAL_BALANCE_IN_CRYPTO = 1.00
+        balancer.PRICE = 0
+
+        quote = balancer.calculate_quote()
+
+        self.assertAlmostEqual(99, quote, 2)
+
     def test_calculate_used_margin_percentage(self):
         percentage = balancer.calculate_used_margin_percentage({'total': 100, 'free': 49})
 
