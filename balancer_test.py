@@ -157,40 +157,38 @@ class BalancerTest(unittest.TestCase):
         self.assertTrue(stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1) is not None)
         self.assertTrue(stats.get_day(int(datetime.date.today().strftime("%Y%j"))) is not None)
 
+    @patch('balancer.load_statistics', return_value = None)
     @patch('balancer.persist_statistics')
-    def test_calculate_statistics_first_day_without_persist(self, mock_persist_statistics):
-        balancer.CONF = self.create_default_conf()
+    def test_calculate_statistics_first_day_without_persist(self, mock_persist_statistics, mock_load_statistics):
+        today = balancer.calculate_daily_statistics(90, 110, 8000.0, False)
 
-        today = balancer.calculate_daily_statistics(100, 8000.0, False)
-
-        self.assertTrue(today['mBal'] == 100)
+        self.assertTrue(today['mBal'] == 90)
+        self.assertTrue(today['fmBal'] == 110)
         self.assertTrue(today['price'] == 8000.0)
         mock_persist_statistics.assert_not_called()
 
-    def test_calculate_statistics_positive_change(self):
-        balancer.CONF = self.create_default_conf()
-        balancer.STATS = balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 2,
-                                        {'mBal': 75.15, 'price': 4400.0})
-        balancer.STATS.add_day(int(datetime.date.today().strftime("%Y%j")) - 1, {'mBal': 50.1, 'price': 8000.0})
-
-        today = balancer.calculate_daily_statistics(100.2, 8800.0, False)
+    @patch('balancer.load_statistics', return_value=balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1,
+                                                                   {'mBal': 50.1, 'fmBal': 100, 'price': 8000.0}))
+    def test_calculate_statistics_positive_change(self, mock_load_statistics):
+        today = balancer.calculate_daily_statistics(100.2, 105, 8800.0, False)
 
         self.assertEqual(100.2, today['mBal'])
+        self.assertEqual(105, today['fmBal'])
         self.assertEqual(8800.0, today['price'])
         self.assertEqual(100.0, today['mBalChan24'])
+        self.assertEqual(5, today['fmBalChan24'])
         self.assertEqual(10.0, today['priceChan24'])
 
-    def test_calculate_statistics_negative_change(self):
-        balancer.INSTANCE = 'test'
-        balancer.CONF = self.create_default_conf()
-        balancer.STATS = balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1,
-                                        {'mBal': 150.3, 'price': 8000.0})
-
-        today = balancer.calculate_daily_statistics(100.2, 7600.0, True)
+    @patch('balancer.load_statistics', return_value=balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1,
+                                                                   {'mBal': 150.3, 'fmBal': 100, 'price': 8000.0}))
+    @patch('balancer.persist_statistics')
+    def test_calculate_statistics_negative_change(self, mock_persist_statistics, mock_load_statistics):
+        today = balancer.calculate_daily_statistics(100.2, 90, 7600.0, True)
 
         self.assertEqual(100.2, today['mBal'])
         self.assertEqual(7600.0, today['price'])
         self.assertEqual(-33.33, today['mBalChan24'])
+        self.assertEqual(-10, today['fmBalChan24'])
         self.assertEqual(-5.0, today['priceChan24'])
 
     @patch('balancer.create_report_part_trade')
@@ -282,7 +280,7 @@ class BalancerTest(unittest.TestCase):
         balancer.EXCHANGE = mock_bitmex
         balancer.LOG = mock_logging
 
-        mock_bitmex.fetch_balance.return_value = {balancer.CONF.base: {'free': 100, 'total': 150}}
+        mock_bitmex.fetch_balance.return_value = {balancer.CONF.base: {'free': 100, 'total': 150, 'used': None}}
         balancer.get_margin_balance()
 
         mock_bitmex.fetch_balance.assert_called()
