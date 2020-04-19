@@ -366,7 +366,7 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
     price = get_current_price()
     today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, daily)
-    append_margin_change(part, today, CONF.base)
+    append_margin_change(part, today)
     append_price_change(part, today, price)
     used_margin = calculate_used_margin_percentage(margin_balance)
     part['mail'].append("Used margin: {:>22.2f}%".format(used_margin))
@@ -389,22 +389,20 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     part['csv'].append("Position {}:;{}".format(CONF.quote, used_balance))
 
 
-def append_margin_change(part: dict, today: dict, currency: str):
+def append_margin_change(part: dict, today: dict):
     """
     Appends margin changes
     """
-    formatter_mail = 18.4 if currency == CONF.base else 16.2
-    m_bal = "Margin balance {}: {:>{}f}".format(currency, today['mBal'], formatter_mail)
+    m_bal = "Margin balance {}: {:>18.4f}".format(CONF.base, today['mBal'])
     if 'mBalChan24' in today:
         change = "{:+.2f}%".format(today['mBalChan24'])
-        m_bal += " (" if currency == CONF.base else "   ("
+        m_bal += " ("
         m_bal += change
         m_bal += ")*"
     else:
         change = "% n/a"
     part['mail'].append(m_bal)
-    formatter_csv = .4 if currency == CONF.base else .2
-    part['csv'].append("Margin balance {}:;{:{}f};{}".format(currency, today['mBal'], formatter_csv, change))
+    part['csv'].append("Margin balance {}:;{:.4f};{}".format(CONF.base, today['mBal'], change))
 
     fm_bal = "Margin balance {}: {:>16.2f}".format(CONF.quote, today['fmBal'])
     if 'fmBalChan24' in today:
