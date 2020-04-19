@@ -533,8 +533,10 @@ def get_margin_balance_of_fiat():
     """
     try:
         if CONF.exchange == 'kraken':
-            res = EXCHANGE.private_post_tradebalance({'asset': CONF.quote})['result']
-            bal = {'total': float(res['eb'])}
+            bal = EXCHANGE.private_post_tradebalance({'asset': CONF.quote})['result']
+            bal['free'] = float(bal['mf'])
+            bal['total'] = float(bal['e'])
+            bal['used'] = float(bal['m'])
         elif CONF.exchange == 'bitmex':
             pos = get_position_info()
             bal = {'total': pos['homeNotional'] * pos['lastPrice']}
