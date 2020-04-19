@@ -283,12 +283,13 @@ def create_report_part_advice():
 def create_report_part_performance(daily: bool):
     part = {'mail': [], 'csv': []}
     margin_balance = get_margin_balance()
+    margin_balance_of_fiat = get_margin_balance_of_fiat()
     net_deposits = get_net_deposits()
     sleep_for(0, 1)
     append_performance(part, margin_balance['total'], net_deposits)
     wallet_balance = get_wallet_balance()
     sleep_for(0, 1)
-    append_balances(part, margin_balance, wallet_balance, daily)
+    append_balances(part, margin_balance, margin_balance_of_fiat, wallet_balance, daily)
     return part
 
 
@@ -354,7 +355,7 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
             part['csv'].append("Overall performance in {}:;{:.4f};% n/a".format(CONF.base, absolute_performance))
 
 
-def append_balances(part: dict, margin_balance: dict, wallet_balance: float, daily: bool):
+def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: dict, wallet_balance: float, daily: bool):
     """
     Appends liquidation price, wallet balance, margin balance (including stats), used margin and leverage information
     """
@@ -365,7 +366,8 @@ def append_balances(part: dict, margin_balance: dict, wallet_balance: float, dai
         part['mail'].append("Wallet balance {}: {:>18.4f}".format(CONF.base, wallet_balance))
         part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
     price = get_current_price()
-    today = calculate_daily_statistics(margin_balance['total'], price, daily)
+    fiat_margin_balance = margin_balance_of_fiat['total'] * price
+    today = calculate_daily_statistics(margin_balance['total'], fiat_margin_balance, price, daily)
     append_margin_change(part, today, CONF.base)
     append_price_change(part, today, price)
     used_margin = calculate_used_margin_percentage(margin_balance)
@@ -406,6 +408,17 @@ def append_margin_change(part: dict, today: dict, currency: str):
     formatter_csv = .4 if currency == CONF.base else .2
     part['csv'].append("Margin balance {}:;{:{}f};{}".format(currency, today['mBal'], formatter_csv, change))
 
+    fm_bal = "Margin balance {}: {:>.2f}".format(currency, today['fmBal'])
+    if 'fmBalChan24' in today:
+        change = "{:+.2f}%".format(today['fmBalChan24'])
+        fm_bal += "   ("
+        fm_bal += change
+        fm_bal += ")*"
+    else:
+        change = "% n/a"
+    part['mail'].append(fm_bal)
+    part['csv'].append("Margin balance {}:;{:.2f};{}".format(currency, today['fmBal'], change))
+
 
 def append_price_change(part: dict, today: dict, price: float):
     """
@@ -423,17 +436,18 @@ def append_price_change(part: dict, today: dict, price: float):
     part['csv'].append("{} price {}:;{:.1f};{}".format(CONF.base, CONF.quote, price, change))
 
 
-def calculate_daily_statistics(m_bal: float, price: float, update_stats: bool):
+def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, update_stats: bool):
     """
     Calculates, updates and persists the change in the margin balance compared with yesterday
     :param m_bal: todays margin balance
+    :param m_bal: todays fiat margin balance
     :param price: the current rate
     :param update_stats: update and persists the statistic values
     :return: todays statistics including price and margin balance changes compared with 24 hours ago
     """
     global STATS
 
-    today = {'mBal': m_bal, 'price': price}
+    today = {'mBal': m_bal, 'fmBal': fm_bal, 'price': price}
     if STATS is None:
         if update_stats and datetime.datetime.utcnow().time() > datetime.datetime(2012, 1, 17, 12, 1).time():
             STATS = Stats(int(datetime.date.today().strftime("%Y%j")), today)
@@ -446,6 +460,8 @@ def calculate_daily_statistics(m_bal: float, price: float, update_stats: bool):
     before_24h = STATS.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
     if before_24h:
         today['mBalChan24'] = round((today['mBal'] / before_24h['mBal'] - 1) * 100, 2)
+        if 'fmBal' in before_24h:
+            today['fmBalChan24'] = round((today['fmBal'] / before_24h['fmBal'] - 1) * 100, 2)
         if 'price' in before_24h:
             today['priceChan24'] = round((today['price'] / before_24h['price'] - 1) * 100, 2)
     return today
@@ -492,7 +508,7 @@ def is_already_written(filename_csv: str):
 
 def get_margin_balance():
     """
-    Fetches the margin balance in fiat (free and total)
+    Fetches the margin balance (of crypto) in fiat (free and total)
     return: balance in fiat
     """
     try:
@@ -501,16 +517,35 @@ def get_margin_balance():
             bal['free'] = float(bal['mf'])
             bal['total'] = float(bal['e'])
             bal['used'] = float(bal['m'])
-        elif CONF.exchange == 'liquid':
-            bal = get_crypto_balance()
         else:
-            bal = EXCHANGE.fetch_balance()[CONF.base]
+            bal = get_crypto_balance()
         return bal
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_margin_balance()
+
+
+def get_margin_balance_of_fiat():
+    """
+    Fetches the margin balance (of fiat) in crypto (free and total)
+    return: balance in crypto
+    """
+    try:
+        if CONF.exchange == 'kraken':
+            bal = EXCHANGE.private_post_tradebalance({'asset': CONF.quote})['result']
+            bal['free'] = float(bal['mf'])
+            bal['total'] = float(bal['e'])
+            bal['used'] = float(bal['m'])
+        else:
+            bal = get_fiat_balance()
+        return bal
+
+    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
+        sleep_for(4, 6)
+        return get_margin_balance_of_fiat()
 
 
 def get_margin_leverage():
