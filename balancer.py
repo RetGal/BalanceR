@@ -22,7 +22,6 @@ import requests
 
 MIN_ORDER_SIZE = 0.0001
 ORDER = None
-STATS = None
 EMAIL_SENT = False
 EMAIL_ONLY = False
 RESET = False
@@ -444,19 +443,19 @@ def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, update
     :param update_stats: update and persists the statistic values
     :return: todays statistics including price and margin balance changes compared with 24 hours ago
     """
-    global STATS
+    stats = load_statistics()
 
     today = {'mBal': m_bal, 'fmBal': fm_bal, 'price': price}
-    if STATS is None:
+    if stats is None:
         if update_stats and datetime.datetime.utcnow().time() > datetime.datetime(2012, 1, 17, 12, 1).time():
-            STATS = Stats(int(datetime.date.today().strftime("%Y%j")), today)
-            persist_statistics()
+            stats = Stats(int(datetime.date.today().strftime("%Y%j")), today)
+            persist_statistics(stats)
         return today
 
     if update_stats and datetime.datetime.utcnow().time() > datetime.datetime(2012, 1, 17, 12, 1).time():
-        STATS.add_day(int(datetime.date.today().strftime("%Y%j")), today)
-        persist_statistics()
-    before_24h = STATS.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
+        stats.add_day(int(datetime.date.today().strftime("%Y%j")), today)
+        persist_statistics(stats)
+    before_24h = stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
     if before_24h:
         today['mBalChan24'] = round((today['mBal'] / before_24h['mBal'] - 1) * 100, 2)
         if 'fmBal' in before_24h:
@@ -474,10 +473,10 @@ def load_statistics():
     return None
 
 
-def persist_statistics():
+def persist_statistics(stats: Stats):
     stats_file = INSTANCE + '.pkl'
     with open(stats_file, "wb") as file:
-        pickle.dump(STATS, file)
+        pickle.dump(stats, file)
 
 
 def calculate_used_margin_percentage(bal=None):
@@ -1118,7 +1117,6 @@ if __name__ == '__main__':
     CONF = ExchangeConfig()
     LOG.info('BalanceR version: %s', CONF.bot_version)
 
-    STATS = load_statistics()
     EXCHANGE = connect_to_exchange()
 
     if EMAIL_ONLY:
