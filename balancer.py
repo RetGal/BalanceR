@@ -775,14 +775,9 @@ def fetch_order_status(order_id: str):
     """
     try:
         if CONF.exchange == 'paymium':
-            # workaround for 401 error
-            orders = EXCHANGE.private_get_user_orders()
-            for x in orders:
-                if x['uuid'] == order_id:
-                    return x['state']
-            # order = EXCHANGE.private_get_user_orders({'uuid': order_id})
-            # if order:
-            #     return order['state']
+            order = EXCHANGE.private_get_user_orders_uuid({'uuid': order_id})
+            if order:
+                return order['state']
             LOG.warning('Order with id %s not found', order_id)
             return 'unknown'
         return EXCHANGE.fetch_order_status(order_id)
