@@ -868,10 +868,11 @@ def create_sell_order(price: float, amount_crypto: float):
 
     except (ccxt.ExchangeError, ccxt.NetworkError, ccxt.InvalidOrder) as error:
         if any(e in str(error.args) for e in STOP_ERRORS):
+            not_selling = 'Order submission not possible - not selling %s'
             if CONF.exchange == 'bitmex':
-                LOG.warning('Order submission not possible - not selling %s', order_size)
+                LOG.warning(not_selling, order_size)
             else:
-                LOG.warning('Order submission not possible - not selling %s', amount_crypto)
+                LOG.warning(not_selling, amount_crypto)
             return None
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
@@ -902,10 +903,11 @@ def create_buy_order(price: float, amount_crypto: float):
 
     except (ccxt.ExchangeError, ccxt.NetworkError, ccxt.InvalidOrder) as error:
         if any(e in str(error.args) for e in STOP_ERRORS):
+            not_buying = 'Order submission not possible - not buying %s'
             if CONF.exchange == 'bitmex':
-                LOG.warning('Order submission not possible - not buying %s', order_size)
+                LOG.warning(not_buying, order_size)
             else:
-                LOG.warning('Order submission not possible - not buying %s', amount_crypto)
+                LOG.warning(not_buying, amount_crypto)
             return None
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
@@ -1061,7 +1063,7 @@ def set_leverage(new_leverage: float):
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         if any(e in str(error.args) for e in STOP_ERRORS):
-            LOG.warning('Insufficient available balance - not lowering leverage to %s', new_leverage)
+            LOG.warning('Insufficient available balance - not setting leverage to %s', new_leverage)
             return None
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
