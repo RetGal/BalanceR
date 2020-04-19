@@ -27,7 +27,7 @@ EMAIL_SENT = False
 EMAIL_ONLY = False
 RESET = False
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
-STOP_ERRORS = ['nsufficient', 'too low', 'not_enough', 'margin_below', 'liquidation price', 'nvalid arguments']
+STOP_ERRORS = ['order_size', 'nsufficient', 'too low', 'not_enough', 'margin_below', 'liquidation price', 'nvalid arguments']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
 
@@ -38,7 +38,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.1'
+            self.bot_version = '0.1.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -671,7 +671,7 @@ def connect_to_exchange():
         if 'test' in exchange.urls:
             exchange.urls['api'] = exchange.urls['test']
         else:
-            raise SystemExit('Test not supported by %s', CONF.exchange)
+            raise SystemExit('Test not supported by {}'.format(CONF.exchange))
 
     return exchange
 
@@ -830,7 +830,7 @@ def create_sell_order(price: float, amount_crypto: float):
         LOG.info('Created %s', str(norder))
         return norder
 
-    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+    except (ccxt.ExchangeError, ccxt.NetworkError, ccxt.InvalidOrder) as error:
         if any(e in str(error.args) for e in STOP_ERRORS):
             if CONF.exchange == 'bitmex':
                 LOG.warning('Order submission not possible - not selling %s', order_size)
@@ -864,7 +864,7 @@ def create_buy_order(price: float, amount_crypto: float):
         LOG.info('Created %s', str(norder))
         return norder
 
-    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+    except (ccxt.ExchangeError, ccxt.NetworkError, ccxt.InvalidOrder) as error:
         if any(e in str(error.args) for e in STOP_ERRORS):
             if CONF.exchange == 'bitmex':
                 LOG.warning('Order submission not possible - not buying %s', order_size)
@@ -891,9 +891,9 @@ def create_market_sell_order(amount_crypto: float):
         LOG.info('Created market %s', str(norder))
         return norder
 
-    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+    except (ccxt.ExchangeError, ccxt.NetworkError, ccxt.InvalidOrder) as error:
         if any(e in str(error.args) for e in STOP_ERRORS):
-            LOG.warning('Insufficient available balance - not selling %s', amount_crypto)
+            LOG.warning('Order submission not possible - not selling %s', amount_crypto)
             return None
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
@@ -918,9 +918,9 @@ def create_market_buy_order(amount_crypto: float):
         LOG.info('Created market %s', str(norder))
         return norder
 
-    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+    except (ccxt.ExchangeError, ccxt.NetworkError, ccxt.InvalidOrder) as error:
         if any(e in str(error.args) for e in STOP_ERRORS):
-            LOG.warning('Insufficient available balance - not buying %s', amount_crypto)
+            LOG.warning('Order submission not possible - not buying %s', amount_crypto)
             return None
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
