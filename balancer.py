@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.2'
+            self.bot_version = '0.1.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -717,12 +717,12 @@ def write_control_file():
 
 def do_buy(quote: float, reference_price: float):
     """
-    Market price raised in 0.5 steps
+    Market price raised in 5 unit steps
     :return: Order
     """
     i = 1
     while i <= CONF.trade_trials:
-        buy_price = get_current_price() + (i / 2)
+        buy_price = get_current_price() + (i * 5)
         order_size = calculate_buy_order_size(quote, reference_price, buy_price)
         if order_size is None:
             LOG.info("Buy order size below minimum")
@@ -747,12 +747,12 @@ def do_buy(quote: float, reference_price: float):
 
 def do_sell(quote: float, reference_price: float):
     """
-    Market price discounted in 0.5 steps
+    Market price discounted in 5 unit steps
     :return: Order
     """
     i = 1
     while i <= CONF.trade_trials:
-        sell_price = get_current_price() - (i / 2)
+        sell_price = get_current_price() - (i * 5)
         order_size = calculate_sell_order_size(quote, reference_price, sell_price)
         if order_size is None:
             LOG.info("Sell order size below minimum")
