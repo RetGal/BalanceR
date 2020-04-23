@@ -26,7 +26,7 @@ EMAIL_SENT = False
 EMAIL_ONLY = False
 RESET = False
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
-STOP_ERRORS = ['order_size', 'nsufficient', 'too low', 'not_enough', 'margin_below', 'liquidation price', 'nvalid arg']
+STOP_ERRORS = ['order_size', 'smaller', 'nsufficient', 'too low', 'not_enough', 'below', 'price', 'nvalid arg']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
 
@@ -1150,6 +1150,8 @@ if __name__ == '__main__':
 
     if CONF.exchange == 'kraken':
         MIN_ORDER_SIZE = 0.002
+    elif CONF.exchange == 'paymium':
+        MIN_ORDER_SIZE = 0.001
 
     if CONF.exchange == 'bitmex':
         set_leverage(0)
