@@ -4,6 +4,6 @@
 ## Voraussetzungen
 
 *BalanceR* setzt *Python* Version 3 oder grösser voraus.
-Im Kern verwendet *MAverage* die [ccxt](https://github.com/ccxt/ccxt) Bibliothek. Diese gilt es mittels [pip](https://pypi.org/project/pip/) zu installieren:
+Im Kern verwendet *BalanceR* die [ccxt](https://github.com/ccxt/ccxt) Bibliothek. Diese gilt es mittels [pip](https://pypi.org/project/pip/) zu installieren:
 
 `python -m pip install -r requirements.txt`
