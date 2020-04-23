@@ -51,7 +51,7 @@ class BalancerTest(unittest.TestCase):
 
         price = balancer.calculate_buy_price(10000)
 
-        self.assertAlmostEqual(9998, price, 3)
+        self.assertEqual(9998, price)
 
     def test_calculate_sell_price(self):
         balancer.CONF = self.create_default_conf()
@@ -59,6 +59,14 @@ class BalancerTest(unittest.TestCase):
         price = balancer.calculate_sell_price(10000)
 
         self.assertEqual(10002, price)
+
+    def test_calculate_sell_price_decimals(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.trade_advantage_in_percent = 0.0333
+
+        price = balancer.calculate_sell_price(10000)
+
+        self.assertEqual(10003.3, price)
 
     @patch('balancer.do_buy')
     def test_meditate_quote_too_low(self, mock_do_buy):
