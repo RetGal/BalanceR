@@ -1,5 +1,5 @@
 # BalanceR
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=RetGal_BalanceR&metric=alert_status)](https://sonarcloud.io/dashboard?id=RetGal_BalancerR)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=RetGal_BalanceR&metric=alert_status)](https://sonarcloud.io/dashboard?id=RetGal_BalanceR)
 
 ## Voraussetzungen
 
