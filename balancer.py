@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.4'
+            self.bot_version = '0.1.5'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -755,7 +755,7 @@ def calculate_buy_price(price: float):
     :param price: market price
     :return: buy price
     """
-    return price / (1 + CONF.trade_advantage_in_percent / 100)
+    return round(price / (1 + CONF.trade_advantage_in_percent / 100), 1)
 
 
 def calculate_buy_order_size(reference_quote: float, reference_price: float, actual_price: float):
@@ -808,7 +808,7 @@ def calculate_sell_price(price: float):
     :param price: market price
     :return: sell price
     """
-    return price * (1 + CONF.trade_advantage_in_percent / 100)
+    return round(price * (1 + CONF.trade_advantage_in_percent / 100), 1)
 
 
 def calculate_sell_order_size(reference_quote: float, reference_price: float, actual_price: float):
@@ -941,11 +941,11 @@ def create_market_sell_order(amount_crypto: float):
     input: amount_crypto to be sold
     """
     try:
-        if CONF.exchange == 'kraken':
-            new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_crypto)
-        else:
+        if CONF.exchange == 'bitmex':
             amount_fiat = round(amount_crypto * get_current_price())
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_fiat)
+        else:
+            new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_crypto)
         norder = Order(new_order)
         LOG.info('Created market %s', str(norder))
         return norder
@@ -966,8 +966,7 @@ def create_market_buy_order(amount_crypto: float):
     """
     try:
         if CONF.exchange == 'bitmex':
-            cur_price = get_current_price()
-            amount_fiat = round(amount_crypto * cur_price)
+            amount_fiat = round(amount_crypto * get_current_price())
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_fiat)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'oflags': 'fcib'})
