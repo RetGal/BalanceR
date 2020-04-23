@@ -46,6 +46,20 @@ class BalancerTest(unittest.TestCase):
 
         self.assertAlmostEqual(0.098, order_size, 3)
 
+    def test_calculate_buy_price(self):
+        balancer.CONF = self.create_default_conf()
+
+        price = balancer.calculate_buy_price(10000)
+
+        self.assertAlmostEqual(9998, price, 3)
+
+    def test_calculate_sell_price(self):
+        balancer.CONF = self.create_default_conf()
+
+        price = balancer.calculate_sell_price(10000)
+
+        self.assertEqual(10002, price)
+
     @patch('balancer.do_buy')
     def test_meditate_quote_too_low(self, mock_do_buy):
         balancer.CONF = self.create_default_conf()
@@ -157,7 +171,7 @@ class BalancerTest(unittest.TestCase):
         self.assertTrue(stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1) is not None)
         self.assertTrue(stats.get_day(int(datetime.date.today().strftime("%Y%j"))) is not None)
 
-    @patch('balancer.load_statistics', return_value = None)
+    @patch('balancer.load_statistics', return_value=None)
     @patch('balancer.persist_statistics')
     def test_calculate_statistics_first_day_without_persist(self, mock_persist_statistics, mock_load_statistics):
         today = balancer.calculate_daily_statistics(90, 110, 8000.0, False)
@@ -399,6 +413,7 @@ class BalancerTest(unittest.TestCase):
         conf.satoshi_factor = 0.00000001
         conf.bot_version = '0.0.1'
         conf.trade_trials = 5
+        conf.trade_advantage_in_percent = 0.02
         conf.crypto_quote_in_percent = 50
         conf.tolerance_in_percent = 2
         conf.period_in_minutes = 10

@@ -26,7 +26,7 @@ EMAIL_SENT = False
 EMAIL_ONLY = False
 RESET = False
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
-STOP_ERRORS = ['order_size', 'nsufficient', 'too low', 'not_enough', 'margin_below', 'liquidation price', 'nvalid arguments']
+STOP_ERRORS = ['order_size', 'nsufficient', 'too low', 'not_enough', 'margin_below', 'liquidation price', 'nvalid arg']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
 
@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.3'
+            self.bot_version = '0.1.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -50,6 +50,7 @@ class ExchangeConfig:
             self.daily_report = bool(str(props['daily_report']).strip('"').lower() == 'true')
             self.trade_report = bool(str(props['trade_report']).strip('"').lower() == 'true')
             self.trade_trials = abs(int(props['trade_trials']))
+            self.trade_advantage_in_percent = abs(float(props['trade_advantage_in_percent']))
             currency = self.pair.split("/")
             self.base = currency[0]
             self.quote = currency[1]
@@ -256,13 +257,15 @@ def create_report_part_settings():
                      "Period in minutes: {:>16}".format(CONF.period_in_minutes),
                      "Daily report: {:>21}".format(str('Y' if CONF.daily_report is True else 'N')),
                      "Trade report: {:>21}".format(str('Y' if CONF.trade_report is True else 'N')),
-                     "Trade trials: {:>21}".format(CONF.trade_trials)],
+                     "Trade trials: {:>21}".format(CONF.trade_trials),
+                     "Trade advantage in %: {:>15}".format(CONF.trade_advantage_in_percent)],
             'csv': ["Quote {} in %:;{}".format(CONF.base, CONF.crypto_quote_in_percent),
-                    "Tolerance in %:;{}".format(str(CONF.tolerance_in_percent)),
+                    "Tolerance in %:;{}".format(CONF.tolerance_in_percent),
                     "Period in minutes:;{}".format(CONF.period_in_minutes),
                     "Daily report:;{}".format(str('Y' if CONF.daily_report is True else 'N')),
                     "Trade report:;{}".format(str('Y' if CONF.trade_report is True else 'N')),
-                    "Trade trials:;{}".format(CONF.trade_trials)]}
+                    "Trade trials:;{}".format(CONF.trade_trials),
+                    "Trade advantage in %: {:>15}".format(CONF.trade_advantage_in_percent)]}
 
 
 def create_mail_part_general():
@@ -717,12 +720,13 @@ def write_control_file():
 
 def do_buy(quote: float, reference_price: float):
     """
-    Market price raised in 5 unit steps
+    Buys at market price lowered by configured percentage or at market price if not successful
+    within the configured trade attempts
     :return: Order
     """
     i = 1
     while i <= CONF.trade_trials:
-        buy_price = get_current_price() + (i * 5)
+        buy_price = calculate_buy_price(get_current_price())
         order_size = calculate_buy_order_size(quote, reference_price, buy_price)
         if order_size is None:
             LOG.info("Buy order size below minimum")
@@ -745,14 +749,37 @@ def do_buy(quote: float, reference_price: float):
     return create_market_buy_order(order_size)
 
 
+def calculate_buy_price(price: float):
+    """
+    Calculates the buy price based on the market price lowered by configured percentage
+    :param price: market price
+    :return: buy price
+    """
+    return price / (1 + CONF.trade_advantage_in_percent / 100)
+
+
+def calculate_buy_order_size(reference_quote: float, reference_price: float, actual_price: float):
+    """
+    Calculates the buy order size. Minus 1% for fees.
+    :param reference_quote
+    :param reference_price
+    :param actual_price:
+    :return: the calculated buy_order_size in crypto or None
+    """
+    quote = reference_quote * (reference_price / actual_price)
+    size = TOTAL_BALANCE_IN_CRYPTO / (100 / quote) / 1.01
+    return round(size - 0.000000006, 8) if size > MIN_ORDER_SIZE else None
+
+
 def do_sell(quote: float, reference_price: float):
     """
-    Market price discounted in 5 unit steps
+    Sells at market price raised by configured percentage or at market price if not successful
+    within the configured trade attempts
     :return: Order
     """
     i = 1
     while i <= CONF.trade_trials:
-        sell_price = get_current_price() - (i * 5)
+        sell_price = calculate_sell_price(get_current_price())
         order_size = calculate_sell_order_size(quote, reference_price, sell_price)
         if order_size is None:
             LOG.info("Sell order size below minimum")
@@ -775,17 +802,13 @@ def do_sell(quote: float, reference_price: float):
     return create_market_sell_order(order_size)
 
 
-def calculate_buy_order_size(reference_quote: float, reference_price: float, actual_price: float):
+def calculate_sell_price(price: float):
     """
-    Calculates the buy order size. Minus 1% for fees.
-    :param reference_quote
-    :param reference_price
-    :param actual_price:
-    :return: the calculated buy_order_size in crypto or None
+    Calculates the sell price based on the market price raised by configured percentage
+    :param price: market price
+    :return: sell price
     """
-    quote = reference_quote * (reference_price / actual_price)
-    size = TOTAL_BALANCE_IN_CRYPTO / (100 / quote) / 1.01
-    return round(size - 0.000000006, 8) if size > MIN_ORDER_SIZE else None
+    return price * (1 + CONF.trade_advantage_in_percent / 100)
 
 
 def calculate_sell_order_size(reference_quote: float, reference_price: float, actual_price: float):
