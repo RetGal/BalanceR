@@ -196,7 +196,7 @@ def daily_report(immediately: bool = False):
         now = datetime.datetime.utcnow()
         if immediately or datetime.datetime(2012, 1, 17, 12, 22).time() > now.time() \
                 > datetime.datetime(2012, 1, 17, 12, 1).time() and EMAIL_SENT != now.day:
-            subject = "Daily report for {}".format(INSTANCE)
+            subject = "Daily report {}".format(INSTANCE)
             content = create_mail_content(True)
             filename_csv = INSTANCE + '.csv'
             write_csv(content['csv'], filename_csv)
@@ -209,7 +209,7 @@ def trade_report():
     Creates a trade report email
     """
     if CONF.trade_report:
-        subject = "Trade report for {}".format(INSTANCE)
+        subject = "RB Trade report {}".format(INSTANCE)
         content = create_mail_content()
         send_mail(subject, content['text'])
 
