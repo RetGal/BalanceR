@@ -24,7 +24,7 @@ MIN_ORDER_SIZE = 0.0001
 ORDER = None
 EMAIL_SENT = False
 EMAIL_ONLY = False
-RESET = False
+KEEP_ORDERS = False
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'nsufficient', 'too low', 'not_enough', 'below', 'price', 'nvalid arg']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.5'
+            self.bot_version = '0.1.6'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -845,6 +845,13 @@ def fetch_order_status(order_id: str):
         return fetch_order_status(order_id)
 
 
+def cancel_all_open_orders():
+    orders = get_open_orders()
+    if orders:
+        for order in orders:
+            cancel_order(order)
+
+
 def cancel_order(order: Order):
     """
     Cancels an order
@@ -1127,6 +1134,8 @@ if __name__ == '__main__':
         if len(sys.argv) > 2:
             if sys.argv[2] == '-eo':
                 EMAIL_ONLY = True
+            elif sys.argv[2] == '-keep':
+                KEEP_ORDERS = True
     else:
         INSTANCE = os.path.basename(input('Filename with API Keys (config): ') or 'config')
 
@@ -1155,10 +1164,8 @@ if __name__ == '__main__':
     if CONF.exchange == 'bitmex':
         set_leverage(0)
 
-    # ORDERS = get_open_orders()
-    # if ORDERS:
-    #     for ORDER in ORDERS:
-    #         cancel_order(ORDER)
+    if not KEEP_ORDERS:
+        cancel_all_open_orders()
 
     while 1:
 
