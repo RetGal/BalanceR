@@ -839,7 +839,7 @@ def fetch_order_status(order_id: str):
                 return order['state']
             LOG.warning('Order with id %s not found', order_id)
             return 'unknown'
-        elif CONF.exchange == 'binance':
+        if CONF.exchange == 'binance':
             order = EXCHANGE.fetch_order(order_id, symbo=CONF.symbol)
             if order:
                 return order['state']
