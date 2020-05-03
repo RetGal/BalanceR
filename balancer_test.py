@@ -74,7 +74,6 @@ class BalancerTest(unittest.TestCase):
 
         mock_get_open_orders.assert_called()
 
-
     @patch('balancer.get_open_orders')
     def test_cancel_all_open_orders_with_keep_orders_enabled(self, mock_get_open_orders):
         balancer.KEEP_ORDERS = True
