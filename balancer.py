@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.6'
+            self.bot_version = '0.1.7'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -633,6 +633,8 @@ def get_open_orders():
     try:
         if CONF.exchange == 'paymium':
             orders = EXCHANGE.private_get_user_orders({'active': True})
+        elif CONF.exchange == 'binance':
+            orders = EXCHANGE.fetch_open_orders(CONF.pair, since=None, limit=20)
         else:
             orders = EXCHANGE.fetch_open_orders(CONF.pair, since=None, limit=20, params={'reverse': True})
         if orders:
@@ -833,6 +835,12 @@ def fetch_order_status(order_id: str):
     try:
         if CONF.exchange == 'paymium':
             order = EXCHANGE.private_get_user_orders_uuid({'uuid': order_id})
+            if order:
+                return order['state']
+            LOG.warning('Order with id %s not found', order_id)
+            return 'unknown'
+        elif CONF.exchange == 'binance':
+            order = EXCHANGE.fetch_order(order_id, symbo=CONF.symbol)
             if order:
                 return order['state']
             LOG.warning('Order with id %s not found', order_id)
