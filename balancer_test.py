@@ -68,6 +68,21 @@ class BalancerTest(unittest.TestCase):
 
         self.assertEqual(10003.3, price)
 
+    @patch('balancer.get_open_orders')
+    def test_cancel_all_open_orders(self, mock_get_open_orders):
+        balancer.cancel_all_open_orders()
+
+        mock_get_open_orders.assert_called()
+
+
+    @patch('balancer.get_open_orders')
+    def test_cancel_all_open_orders_with_keep_orders_enabled(self, mock_get_open_orders):
+        balancer.KEEP_ORDERS = True
+
+        balancer.cancel_all_open_orders()
+
+        mock_get_open_orders.assert_not_called()
+
     @patch('balancer.do_buy')
     def test_meditate_quote_too_low(self, mock_do_buy):
         balancer.CONF = self.create_default_conf()

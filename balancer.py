@@ -854,10 +854,11 @@ def fetch_order_status(order_id: str):
 
 
 def cancel_all_open_orders():
-    orders = get_open_orders()
-    if orders:
-        for order in orders:
-            cancel_order(order)
+    if not KEEP_ORDERS:
+        orders = get_open_orders()
+        if orders:
+            for order in orders:
+                cancel_order(order)
 
 
 def cancel_order(order: Order):
