@@ -20,13 +20,13 @@ from time import sleep
 import ccxt
 import requests
 
-MIN_ORDER_SIZE = 0.0001
+MIN_ORDER_SIZE = 0.001
 ORDER = None
 EMAIL_SENT = False
 EMAIL_ONLY = False
 KEEP_ORDERS = False
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
-STOP_ERRORS = ['order_size', 'smaller', 'nsufficient', 'too low', 'not_enough', 'below', 'price', 'nvalid arg']
+STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price', 'nvalid arg']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
 
@@ -770,7 +770,10 @@ def calculate_buy_order_size(reference_quote: float, reference_price: float, act
     """
     quote = reference_quote * (reference_price / actual_price)
     size = TOTAL_BALANCE_IN_CRYPTO / (100 / quote) / 1.01
-    return round(size - 0.000000006, 8) if size > MIN_ORDER_SIZE else None
+    if size > MIN_ORDER_SIZE:
+        return round(size - 0.000000006, 8)
+    LOG.info("Order size %f < %f", size, MIN_ORDER_SIZE)
+    return None
 
 
 def do_sell(quote: float, reference_price: float):
@@ -1167,8 +1170,8 @@ if __name__ == '__main__':
 
     if CONF.exchange == 'kraken':
         MIN_ORDER_SIZE = 0.002
-    elif CONF.exchange == 'paymium':
-        MIN_ORDER_SIZE = 0.001
+    elif CONF.exchange == 'bitmex':
+        MIN_ORDER_SIZE = 0.0001
 
     if CONF.exchange == 'bitmex':
         set_leverage(0)
