@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.8'
+            self.bot_version = '0.1.9'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -50,7 +50,8 @@ class ExchangeConfig:
             self.daily_report = bool(str(props['daily_report']).strip('"').lower() == 'true')
             self.trade_report = bool(str(props['trade_report']).strip('"').lower() == 'true')
             self.trade_trials = abs(int(props['trade_trials']))
-            self.trade_advantage_in_percent = abs(float(props['trade_advantage_in_percent']))
+            self.order_adjust_seconds = abs(int(props['order_adjust_seconds']))
+            self.trade_advantage_in_percent = float(props['trade_advantage_in_percent'])
             currency = self.pair.split("/")
             self.base = currency[0]
             self.quote = currency[1]
@@ -258,6 +259,7 @@ def create_report_part_settings():
                      "Daily report: {:>21}".format(str('Y' if CONF.daily_report is True else 'N')),
                      "Trade report: {:>21}".format(str('Y' if CONF.trade_report is True else 'N')),
                      "Trade trials: {:>21}".format(CONF.trade_trials),
+                     "Order adjust seconds: {:>15}".format(CONF.order_adjust_seconds),
                      "Trade advantage in %: {:>15}".format(CONF.trade_advantage_in_percent)],
             'csv': ["Quote {} in %:;{}".format(CONF.base, CONF.crypto_quote_in_percent),
                     "Tolerance in %:;{}".format(CONF.tolerance_in_percent),
@@ -265,7 +267,8 @@ def create_report_part_settings():
                     "Daily report:;{}".format(str('Y' if CONF.daily_report is True else 'N')),
                     "Trade report:;{}".format(str('Y' if CONF.trade_report is True else 'N')),
                     "Trade trials:;{}".format(CONF.trade_trials),
-                    "Trade advantage in %: {:>15}".format(CONF.trade_advantage_in_percent)]}
+                    "Order adjust seconds:;{}".format(CONF.order_adjust_seconds),
+                    "Trade advantage in %:;{}".format(CONF.trade_advantage_in_percent)]}
 
 
 def create_mail_part_general():
@@ -737,7 +740,7 @@ def do_buy(quote: float, reference_price: float):
         if order is None:
             LOG.warning("Could not create buy order over %s", order_size)
             return None
-        sleep(90)
+        sleep(CONF.order_adjust_seconds)
         order_status = fetch_order_status(order.id)
         if order_status in ['open', 'active']:
             cancel_order(order)
@@ -793,7 +796,7 @@ def do_sell(quote: float, reference_price: float):
         if order is None:
             LOG.warning("Could not create sell order over %s", order_size)
             return None
-        sleep(90)
+        sleep(CONF.order_adjust_seconds)
         order_status = fetch_order_status(order.id)
         if order_status in ['open', 'active']:
             cancel_order(order)

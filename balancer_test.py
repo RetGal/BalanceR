@@ -435,6 +435,7 @@ class BalancerTest(unittest.TestCase):
         conf.satoshi_factor = 0.00000001
         conf.bot_version = '0.0.1'
         conf.trade_trials = 5
+        conf.order_adjust_seconds = 90
         conf.trade_advantage_in_percent = 0.02
         conf.crypto_quote_in_percent = 50
         conf.tolerance_in_percent = 2

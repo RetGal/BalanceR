@@ -16,6 +16,7 @@ period_in_minutes = 10
 daily_report = True
 trade_report = True
 trade_trials = 3
+order_adjust_seconds = 90
 trade_advantage_in_percent = 0.02
 
 # email properties
