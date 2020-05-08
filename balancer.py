@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.7'
+            self.bot_version = '0.1.8'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -845,7 +845,7 @@ def fetch_order_status(order_id: str):
         if CONF.exchange == 'binance':
             order = EXCHANGE.fetch_order(order_id, symbol=CONF.pair)
             if order:
-                return order['state']
+                return order['status']
             LOG.warning('Order with id %s not found', order_id)
             return 'unknown'
         return EXCHANGE.fetch_order_status(order_id)
