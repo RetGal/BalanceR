@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.9'
+            self.bot_version = '0.1.10'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1071,6 +1071,10 @@ def get_balance(currency: str):
                     return {'used': 0, 'free': float(bal['balance']), 'total': float(bal['balance'])}
         LOG.warning('Could not get balance for liquid')
         return None
+
+    except KeyError:
+        LOG.warning('No %s balance found', currency)
+        return {'used': 0, 'free': 0, 'total': 0}
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
