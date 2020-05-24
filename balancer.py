@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.10'
+            self.bot_version = '0.1.11'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -371,8 +371,16 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         part['mail'].append("Wallet balance {}: {:>18.4f}".format(CONF.base, wallet_balance))
         part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
     price = get_current_price()
-    today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, daily)
-    append_margin_change(part, today)
+    if CONF.exchange == 'bitmex':
+        cb = get_crypto_balance()
+        crypto_total = cb['total'] if cb else 0
+        fb = get_fiat_balance()
+        fiat_total = fb['total'] if fb else 0
+        today = calculate_daily_statistics(crypto_total, fiat_total, price, daily)
+        append_margin_change(part, today)
+    else:
+        today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, daily)
+        append_balance_change(part, today)
     append_price_change(part, today, price)
     used_margin = calculate_used_margin_percentage(margin_balance)
     part['mail'].append("Used margin: {:>22.2f}%".format(used_margin))
@@ -420,6 +428,33 @@ def append_margin_change(part: dict, today: dict):
         change = "% n/a"
     part['mail'].append(fm_bal)
     part['csv'].append("Margin balance {}:;{:.2f};{}".format(CONF.quote, today['fmBal'], change))
+
+
+def append_balance_change(part: dict, today: dict):
+    """
+    Appends balance changes
+    """
+    m_bal = "Balance {}: {:>25.4f}".format(CONF.base, today['mBal'])
+    if 'mBalChan24' in today:
+        change = "{:+.2f}%".format(today['mBalChan24'])
+        m_bal += " ("
+        m_bal += change
+        m_bal += ")*"
+    else:
+        change = "% n/a"
+    part['mail'].append(m_bal)
+    part['csv'].append("Balance {}:;{:.4f};{}".format(CONF.base, today['mBal'], change))
+
+    fm_bal = "Balance {}: {:>23.2f}".format(CONF.quote, today['fmBal'])
+    if 'fmBalChan24' in today:
+        change = "{:+.2f}%".format(today['fmBalChan24'])
+        fm_bal += "   ("
+        fm_bal += change
+        fm_bal += ")*"
+    else:
+        change = "% n/a"
+    part['mail'].append(fm_bal)
+    part['csv'].append("Balance {}:;{:.2f};{}".format(CONF.quote, today['fmBal'], change))
 
 
 def append_price_change(part: dict, today: dict, price: float):
