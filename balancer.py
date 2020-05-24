@@ -372,14 +372,14 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
     price = get_current_price()
     if CONF.exchange == 'bitmex':
+        today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, daily)
+        append_margin_change(part, today)
+    else:
         cb = get_crypto_balance()
         crypto_total = cb['total'] if cb else 0
         fb = get_fiat_balance()
         fiat_total = fb['total'] if fb else 0
         today = calculate_daily_statistics(crypto_total, fiat_total, price, daily)
-        append_margin_change(part, today)
-    else:
-        today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, daily)
         append_balance_change(part, today)
     append_price_change(part, today, price)
     used_margin = calculate_used_margin_percentage(margin_balance)
