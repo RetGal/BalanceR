@@ -384,24 +384,24 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     append_net_change(part, today)
     append_price_change(part, today, price)
     used_margin = calculate_used_margin_percentage(margin_balance)
-    part['mail'].append("Used margin: {:>22.2f}%".format(used_margin))
+    part['mail'].append("Used margin: {:>23.2f}%".format(used_margin))
     part['csv'].append("Used margin:;{:.2f}%".format(used_margin))
     if CONF.exchange == 'kraken':
         actual_leverage = get_margin_leverage()
-        part['mail'].append("Actual leverage: {:>18.2f}%".format(actual_leverage))
+        part['mail'].append("Actual leverage: {:>19.2f}%".format(actual_leverage))
         part['csv'].append("Actual leverage:;{:.2f}%".format(used_margin))
     elif CONF.exchange == 'bitmex':
         actual_leverage = get_margin_leverage()
-        part['mail'].append("Actual leverage: {:>18.2f}x".format(actual_leverage))
+        part['mail'].append("Actual leverage: {:>19.2f}x".format(actual_leverage))
         part['csv'].append("Actual leverage:;{:.2f}x".format(actual_leverage))
     else:
-        part['mail'].append("Actual leverage: {:>18}".format('n/a'))
+        part['mail'].append("Actual leverage: {:>19}".format('n/a'))
         part['csv'].append("Actual leverage:;{}".format('n/a'))
     used_balance = get_used_balance()
     if used_balance is None:
         used_balance = 'n/a'
-    part['mail'].append("Position {}: {:>21}".format(CONF.quote, used_balance))
-    part['csv'].append("Position {}:;{}".format(CONF.quote, used_balance))
+    part['mail'].append("Position {}: {:>22.2f}".format(CONF.quote, used_balance))
+    part['csv'].append("Position {}:;{:.2}".format(CONF.quote, used_balance))
 
 
 def append_margin_change(part: dict, today: dict):
@@ -463,7 +463,7 @@ def append_net_change(part: dict, today: dict):
         change = "{:+.2f}%".format(today['mBalChan24'] + today['fmBalChan24'])
     else:
         change = "% n/a"
-    net_result = "Net result: {:>24}".format(change)
+    net_result = "Net result: {:>25}".format(change)
     part['mail'].append(net_result)
     part['csv'].append("Net result:;{};".format(change))
 
@@ -472,16 +472,16 @@ def append_price_change(part: dict, today: dict, price: float):
     """
     Appends price changes
     """
-    rate = "{} price {}: {:>20.1f}".format(CONF.base, CONF.quote, price)
+    rate = "{} price {}: {:>21.2f}".format(CONF.base, CONF.quote, price)
     if 'priceChan24' in today:
         change = "{:+.2f}%".format(today['priceChan24'])
-        rate += " ("
+        rate += "   ("
         rate += change
         rate += ")*"
     else:
         change = "% n/a"
     part['mail'].append(rate)
-    part['csv'].append("{} price {}:;{:.1f};{}".format(CONF.base, CONF.quote, price, change))
+    part['csv'].append("{} price {}:;{:.2f};{}".format(CONF.base, CONF.quote, price, change))
 
 
 def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, update_stats: bool):
@@ -1066,8 +1066,8 @@ def get_used_balance():
             return position[0]['currentQty']
         if CONF.exchange == 'kraken':
             result = EXCHANGE.private_post_tradebalance()['result']
-            return round(float(result['e']) - float(result['mf']))
-        return round(get_crypto_balance()['used'] * get_current_price())
+            return float(result['e']) - float(result['mf'])
+        return get_crypto_balance()['used'] * get_current_price()
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
