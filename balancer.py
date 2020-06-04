@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.11'
+            self.bot_version = '0.1.12'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -197,7 +197,7 @@ def daily_report(immediately: bool = False):
         now = datetime.datetime.utcnow()
         if immediately or datetime.datetime(2012, 1, 17, 12, 22).time() > now.time() \
                 > datetime.datetime(2012, 1, 17, 12, 1).time() and EMAIL_SENT != now.day:
-            subject = "Daily report {}".format(INSTANCE)
+            subject = "Daily BalanceR report {}".format(INSTANCE)
             content = create_mail_content(True)
             filename_csv = INSTANCE + '.csv'
             write_csv(content['csv'], filename_csv)
@@ -381,6 +381,7 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         fiat_total = fb['total'] if fb else 0
         today = calculate_daily_statistics(crypto_total, fiat_total, price, daily)
         append_balance_change(part, today)
+    append_net_change(part, today)
     append_price_change(part, today, price)
     used_margin = calculate_used_margin_percentage(margin_balance)
     part['mail'].append("Used margin: {:>22.2f}%".format(used_margin))
@@ -455,6 +456,16 @@ def append_balance_change(part: dict, today: dict):
         change = "% n/a"
     part['mail'].append(fm_bal)
     part['csv'].append("Balance {}:;{:.2f};{}".format(CONF.quote, today['fmBal'], change))
+
+
+def append_net_change(part: dict, today: dict):
+    if 'mBalChan24' in today and 'fmBalChan24' in today:
+        change = "{:+.2f}%".format(today['mBalChan24'] + today['fmBalChan24'])
+    else:
+        change = "% n/a"
+    net_result = "Net result: {:>24}".format(change)
+    part['mail'].append(net_result)
+    part['csv'].append("Net result:;{};".format(change))
 
 
 def append_price_change(part: dict, today: dict, price: float):
