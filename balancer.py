@@ -463,7 +463,7 @@ def append_net_change(part: dict, today: dict):
         change = "{:+.2f}%".format(today['mBalChan24'] + today['fmBalChan24'])
     else:
         change = "% n/a"
-    net_result = "Net result: {:>25}".format(change)
+    net_result = "Net result: {:>25}*".format(change)
     part['mail'].append(net_result)
     part['csv'].append("Net result:;{};".format(change))
 
