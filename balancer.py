@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.12'
+            self.bot_version = '0.1.13'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -460,10 +460,10 @@ def append_balance_change(part: dict, today: dict):
 
 def append_net_change(part: dict, today: dict):
     if 'mBalChan24' in today and 'fmBalChan24' in today:
-        change = "{:+.2f}%".format(today['mBalChan24'] + today['fmBalChan24'])
+        change = "{:+.2f}".format(today['mBalChan24'] + today['fmBalChan24'])
     else:
         change = "% n/a"
-    net_result = "Net result: {:>25}*".format(change)
+    net_result = "Net result: {:>25}%*".format(change)
     part['mail'].append(net_result)
     part['csv'].append("Net result:;{};".format(change))
 
@@ -1056,18 +1056,18 @@ def create_market_buy_order(amount_crypto: float):
 def get_used_balance():
     """
     Fetch the used balance in fiat.
-    output: balance
+    output: float
     """
     try:
         if CONF.exchange == 'bitmex':
             position = EXCHANGE.private_get_position()
             if not position:
                 return None
-            return position[0]['currentQty']
+            return float(position[0]['currentQty'])
         if CONF.exchange == 'kraken':
             result = EXCHANGE.private_post_tradebalance()['result']
             return float(result['e']) - float(result['mf'])
-        return get_crypto_balance()['used'] * get_current_price()
+        return float(get_crypto_balance()['used'] * get_current_price())
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
