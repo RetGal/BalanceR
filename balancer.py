@@ -465,7 +465,7 @@ def append_net_change(part: dict, today: dict):
         change = "% n/a"
     net_result = "Net result: {:>25}%*".format(change)
     part['mail'].append(net_result)
-    part['csv'].append("Net result:;{};".format(change))
+    part['csv'].append("Net result:;{}%".format(change))
 
 
 def append_price_change(part: dict, today: dict, price: float):
