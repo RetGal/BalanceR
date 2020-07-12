@@ -421,6 +421,23 @@ class BalancerTest(unittest.TestCase):
         self.assertTrue(mail_part.rfind('n/a') > 0)
         self.assertTrue(csv_part.rfind('n/a') > 0)
 
+    def test_append_net_change(self):
+        part = {'mail': [], 'csv': []}
+        today = {'mBalChan24': -0.01, 'fmBalChan24': +0.03}
+
+        balancer.append_net_change(part, today)
+
+        self.assertEqual('Net result:;+0.02%', part['csv'][0])
+
+    def test_append_price_change(self):
+        balancer.CONF = self.create_default_conf()
+        part = {'mail': [], 'csv': []}
+        today = {'priceChan24': +0.21}
+
+        balancer.append_price_change(part, today, 100)
+
+        self.assertEqual(balancer.CONF.base + ' price ' + balancer.CONF.quote + ':;100.00;+0.21%', part['csv'][0])
+
     @staticmethod
     def create_default_conf():
         conf = balancer.ExchangeConfig
@@ -443,6 +460,7 @@ class BalancerTest(unittest.TestCase):
         conf.daily_report = False
         conf.trade_report = False
         conf.info = ''
+        conf.url = 'http://example.org'
         conf.mail_server = 'smtp.example.org'
         conf.sender_address = 'test@example.org'
         conf.recipient_addresses = ''

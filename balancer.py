@@ -62,6 +62,7 @@ class ExchangeConfig:
             self.sender_password = str(props['sender_password']).strip('"')
             self.mail_server = str(props['mail_server']).strip('"')
             self.info = str(props['info']).strip('"')
+            self.url = 'https://bitcoin-schweiz.ch/bot/'
         except (configparser.NoSectionError, KeyError):
             raise SystemExit('Invalid configuration for ' + INSTANCE)
 
@@ -236,14 +237,13 @@ def create_mail_content(daily: bool = False):
     settings = ["Your settings", "-------------", '\n'.join(settings_part['mail']), '\n\n']
     general = ["General", "-------", '\n'.join(general_part), '\n\n']
 
-    bcs_url = 'https://bitcoin-schweiz.ch/bot/'
     text = '' if daily else '\n'.join(trade)
 
     if not CONF.info:
-        text += '\n'.join(performance) + '\n'.join(advice) + '\n'.join(settings) + '\n'.join(general) + bcs_url + '\n'
+        text += '\n'.join(performance) + '\n'.join(advice) + '\n'.join(settings) + '\n'.join(general) + CONF.url + '\n'
     else:
         text += '\n'.join(performance) + '\n'.join(advice) + '\n'.join(settings) + '\n'.join(general) + CONF.info \
-                + '\n\n' + bcs_url + '\n'
+                + '\n\n' + CONF.url + '\n'
 
     csv = None if not daily else INSTANCE + ';' + str(datetime.datetime.utcnow().replace(microsecond=0)) + ' UTC;' + \
                                  (';'.join(performance_part['csv']) + ';' + ';'.join(advice_part['csv']) + ';' +
@@ -325,11 +325,11 @@ def send_mail(subject: str, text: str, attachment: str = None):
         part.add_header('Content-Disposition', "attachment; filename={}".format(attachment))
         msg.attach(part)
 
-    server = smtplib.SMTP(CONF.mail_server, 587)
-    server.starttls()
+    server = smtplib.SMTP_SSL(CONF.mail_server, 465)
+    # server.starttls()
     server.set_debuglevel(0)
     server.login(CONF.sender_address, CONF.sender_password)
-    server.send_message(msg)
+    server.send_message(msg, from_addr=CONF.sender_address, to_addrs=recipients, mail_options=(), rcpt_options=())
     server.quit()
     LOG.info("Sent email to %s", recipients)
 
