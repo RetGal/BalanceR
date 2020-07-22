@@ -329,7 +329,7 @@ def send_mail(subject: str, text: str, attachment: str = None):
     # server.starttls()
     server.set_debuglevel(0)
     server.login(CONF.sender_address, CONF.sender_password)
-    server.send_message(msg, from_addr=CONF.sender_address, to_addrs=recipients, mail_options=(), rcpt_options=())
+    server.send_message(msg, None, None, mail_options=(), rcpt_options=())
     server.quit()
     LOG.info("Sent email to %s", recipients)
 
