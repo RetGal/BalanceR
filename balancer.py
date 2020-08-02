@@ -1185,7 +1185,10 @@ def meditate(quote: float, price: float):
         if mm is None:
             return None
         target_quote = CONF.crypto_quote_in_percent / mm['current']
-        target_quote = 10 if target_quote < 10 else 90 if target_quote > 90 else target_quote
+        if target_quote < 10:
+            target_quote = 10
+        elif target_quote > 90:
+            target_quote = 90
     else:
         target_quote = CONF.crypto_quote_in_percent
     if quote < target_quote - CONF.tolerance_in_percent:
