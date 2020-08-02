@@ -90,6 +90,26 @@ class BalancerTest(unittest.TestCase):
 
         mock_do_buy.assert_called_with(15, 10000)
 
+    @patch('balancer.do_buy')
+    @patch('balancer.fetch_mayer', return_value={'current': 1.00})
+    def test_meditate_quote_too_low_auto_quote_enabled(self, mock_mayer, mock_do_buy):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = True
+
+        balancer.meditate(35, 10000)
+
+        mock_do_buy.assert_called_with(15, 10000)
+
+    @patch('balancer.do_buy')
+    @patch('balancer.fetch_mayer', return_value={'current': 0.5})
+    def test_meditate_quote_too_low_auto_quote_enabled_low_mayer(self, mock_mayer, mock_do_buy):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = True
+
+        balancer.meditate(40, 10000)
+
+        mock_do_buy.assert_called_with(50, 10000)
+
     @patch('balancer.do_sell')
     def test_meditate_quote_too_high(self, mock_do_sell):
         balancer.CONF = self.create_default_conf()
@@ -100,13 +120,33 @@ class BalancerTest(unittest.TestCase):
 
     @patch('balancer.do_sell')
     @patch('balancer.do_buy')
-    def test_meditate_quote_too_high(self, mock_do_buy, mock_do_sell):
+    def test_meditate_quote_within_tolerance(self, mock_do_buy, mock_do_sell):
         balancer.CONF = self.create_default_conf()
 
         balancer.meditate(51, 10000)
 
         mock_do_buy.assert_not_called()
         mock_do_sell.assert_not_called()
+
+    @patch('balancer.do_sell')
+    @patch('balancer.fetch_mayer', return_value={'current': 1.60})
+    def test_meditate_quote_too_high_auto_quote_enabled_high_mayer(self, mock_mayer, mock_do_sell):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = True
+
+        balancer.meditate(35, 10000)
+
+        mock_do_sell.assert_called_with(3.75, 10000)
+
+    @patch('balancer.do_sell')
+    @patch('balancer.fetch_mayer', return_value={'current': 5.60})
+    def test_meditate_quote_too_high_auto_quote_enabled_very_high_mayer(self, mock_mayer, mock_do_sell):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = True
+
+        balancer.meditate(35, 10000)
+
+        mock_do_sell.assert_called_with(25, 10000)
 
     @patch('balancer.logging')
     def test_calculate_quote_very_low(self, mock_logger):
@@ -455,6 +495,7 @@ class BalancerTest(unittest.TestCase):
         conf.order_adjust_seconds = 90
         conf.trade_advantage_in_percent = 0.02
         conf.crypto_quote_in_percent = 50
+        conf.auto_quote = False
         conf.tolerance_in_percent = 2
         conf.period_in_minutes = 10
         conf.daily_report = False

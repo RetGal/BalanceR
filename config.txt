@@ -11,6 +11,7 @@ symbol = "XBTUSD"
 
 # bot properties
 crypto_quote_in_percent = 50
+auto_quote = False
 tolerance_in_percent = 2
 period_in_minutes = 10
 daily_report = True

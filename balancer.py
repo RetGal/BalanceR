@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.13'
+            self.bot_version = '0.1.14'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -45,6 +45,7 @@ class ExchangeConfig:
             self.pair = str(props['pair']).strip('"')
             self.symbol = str(props['symbol']).strip('"')
             self.crypto_quote_in_percent = abs(float(props['crypto_quote_in_percent']))
+            self.auto_quote = bool(str(props['auto_quote']).strip('"').lower() == 'true')
             self.tolerance_in_percent = abs(float(props['tolerance_in_percent']))
             self.period_in_minutes = abs(float(props['period_in_minutes']))
             self.daily_report = bool(str(props['daily_report']).strip('"').lower() == 'true')
@@ -254,6 +255,7 @@ def create_mail_content(daily: bool = False):
 
 def create_report_part_settings():
     return {'mail': ["Quote {} in %: {:>19}".format(CONF.base, CONF.crypto_quote_in_percent),
+                     "Auto-Quote: {:>23}".format(str('Y' if CONF.auto_quote is True else 'N')),
                      "Tolerance in %: {:>19}".format(CONF.tolerance_in_percent),
                      "Period in minutes: {:>16}".format(CONF.period_in_minutes),
                      "Daily report: {:>21}".format(str('Y' if CONF.daily_report is True else 'N')),
@@ -262,6 +264,7 @@ def create_report_part_settings():
                      "Order adjust seconds: {:>15}".format(CONF.order_adjust_seconds),
                      "Trade advantage in %: {:>15}".format(CONF.trade_advantage_in_percent)],
             'csv': ["Quote {} in %:;{}".format(CONF.base, CONF.crypto_quote_in_percent),
+                    "Auto-Quote:;{}".format(str('Y' if CONF.auto_quote is True else 'N')),
                     "Tolerance in %:;{}".format(CONF.tolerance_in_percent),
                     "Period in minutes:;{}".format(CONF.period_in_minutes),
                     "Daily report:;{}".format(str('Y' if CONF.daily_report is True else 'N')),
@@ -1177,10 +1180,18 @@ def do_post_trade_action():
 
 
 def meditate(quote: float, price: float):
-    if quote < CONF.crypto_quote_in_percent - CONF.tolerance_in_percent:
-        return do_buy(CONF.crypto_quote_in_percent - quote, price)
-    if quote > CONF.crypto_quote_in_percent + CONF.tolerance_in_percent:
-        return do_sell(quote - CONF.crypto_quote_in_percent, price)
+    if CONF.auto_quote:
+        mm = fetch_mayer()
+        if mm is None:
+            return None
+        target_quote = CONF.crypto_quote_in_percent / mm['current']
+        target_quote = 10 if target_quote < 10 else 90 if target_quote > 90 else target_quote
+    else:
+        target_quote = CONF.crypto_quote_in_percent
+    if quote < target_quote - CONF.tolerance_in_percent:
+        return do_buy(target_quote - quote, price)
+    if quote > target_quote + CONF.tolerance_in_percent:
+        return do_sell(quote - target_quote, price)
     return None
 
 
