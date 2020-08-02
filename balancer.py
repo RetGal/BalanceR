@@ -1189,6 +1189,7 @@ def meditate(quote: float, price: float):
             target_quote = 10
         elif target_quote > 90:
             target_quote = 90
+        LOG.info('Auto quote %f @ %f', target_quote, mm['current'])
     else:
         target_quote = CONF.crypto_quote_in_percent
     if quote < target_quote - CONF.tolerance_in_percent:
