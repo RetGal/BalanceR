@@ -429,22 +429,22 @@ class BalancerTest(unittest.TestCase):
 
         mock_kraken.create_limit_buy_order.assert_called_with(balancer.CONF.pair, amount_crypto, buy_price, {'oflags': 'fcib'})
 
-    def test_print_mayer_buy(self):
+    def test_evaluate_mayer_buy(self):
         advice = balancer.evaluate_mayer({'current': 1, 'average': 1.5})
 
         self.assertEqual('BUY', advice)
 
-    def test_print_mayer_sell(self):
+    def test_evaluate_mayer_sell(self):
         advice = balancer.evaluate_mayer({'current': 2.5, 'average': 1.5})
 
         self.assertEqual('SELL', advice)
 
-    def test_print_mayer_hold(self):
+    def test_evaluate_mayer_hold(self):
         advice = balancer.evaluate_mayer({'current': 2.2, 'average': 1.5})
 
         self.assertEqual('HOLD', advice)
 
-    def test_print_mayer_na(self):
+    def test_evaluate_mayer_na(self):
         advice = balancer.evaluate_mayer()
 
         self.assertEqual('n/a', advice)
