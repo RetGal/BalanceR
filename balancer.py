@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.14'
+            self.bot_version = '0.1.15'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -172,21 +172,28 @@ def fetch_mayer(tries: int = 0):
     return None
 
 
-def print_mayer():
-    mayer = fetch_mayer()
+def evaluate_mayer(mayer: dict = None):
     if mayer is None:
-        return "Mayer multiple: {:>19} (n/a)".format('n/a')
+        return 'n/a'
     if mayer['current'] < mayer['average']:
-        return "Mayer multiple: {:>19.2f} (< {:.2f} = BUY)".format(mayer['current'], mayer['average'])
+        return 'BUY'
     if mayer['current'] > 2.4:
-        return "Mayer multiple: {:>19.2f} (> 2.4 = SELL)".format(mayer['current'])
-    return "Mayer multiple: {:>19.2f} (> {:.2f} and < 2.4 = HOLD)".format(mayer['current'], mayer['average'])
+        return 'SELL'
+    return 'HOLD'
 
 
 def append_mayer(part: dict):
-    text = print_mayer()
-    part['mail'].append(text)
-    part['csv'].append(text.replace('  ', '').replace(':', ':;'))
+    mayer = fetch_mayer()
+    advice = evaluate_mayer(mayer)
+    if mayer is None:
+        part['mail'].append("Mayer multiple: {:>19} (n/a)".format(advice))
+        part['csv'].append("Mayer multiple:;n/a")
+        return
+    if advice != 'HOLD':
+        part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], mayer['average'], advice))
+    else:
+        part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], 2.4, advice))
+    part['csv'].append("Mayer multiple:;{.2f}".format(mayer['current']))
 
 
 def daily_report(immediately: bool = False):
