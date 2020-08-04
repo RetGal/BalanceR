@@ -193,7 +193,7 @@ def append_mayer(part: dict):
         part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], mayer['average'], advice))
     else:
         part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], 2.4, advice))
-    part['csv'].append("Mayer multiple:;{.2f}".format(mayer['current']))
+    part['csv'].append("Mayer multiple:;{:.2f}".format(mayer['current']))
 
 
 def daily_report(immediately: bool = False):
