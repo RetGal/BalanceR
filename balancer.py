@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.15'
+            self.bot_version = '0.1.16'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -396,17 +396,9 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     used_margin = calculate_used_margin_percentage(margin_balance)
     part['mail'].append("Used margin: {:>23.2f}%".format(used_margin))
     part['csv'].append("Used margin:;{:.2f}%".format(used_margin))
-    if CONF.exchange == 'kraken':
-        actual_leverage = get_margin_leverage()
-        part['mail'].append("Actual leverage: {:>19.2f}%".format(actual_leverage))
-        part['csv'].append("Actual leverage:;{:.2f}%".format(used_margin))
-    elif CONF.exchange == 'bitmex':
-        actual_leverage = get_margin_leverage()
-        part['mail'].append("Actual leverage: {:>19.2f}x".format(actual_leverage))
-        part['csv'].append("Actual leverage:;{:.2f}x".format(actual_leverage))
-    else:
-        part['mail'].append("Actual leverage: {:>19}".format('n/a'))
-        part['csv'].append("Actual leverage:;{}".format('n/a'))
+    actual_quote = calculate_quote()
+    part['mail'].append("Actual quote: {:>22.2f}%".format(actual_quote))
+    part['csv'].append("Actual quote:;{:.2f}%".format(actual_quote))
     used_balance = get_used_balance()
     if used_balance is None:
         used_balance = 'n/a'
@@ -473,7 +465,7 @@ def append_net_change(part: dict, today: dict):
         change = "{:+.2f}".format(today['mBalChan24'] + today['fmBalChan24'])
     else:
         change = "% n/a"
-    net_result = "Net result: {:>25}%*".format(change)
+    net_result = "Net result: {:>24}%*".format(change)
     part['mail'].append(net_result)
     part['csv'].append("Net result:;{}%".format(change))
 
