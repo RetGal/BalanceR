@@ -37,7 +37,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.16'
+            self.bot_version = '0.1.17'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1247,7 +1247,6 @@ if __name__ == '__main__':
         cancel_all_open_orders()
 
     while 1:
-
         if CONF.exchange == 'bitmex':
             POS = get_position_info()
             # aka margin balance
@@ -1263,7 +1262,12 @@ if __name__ == '__main__':
             PRICE = get_current_price()
             TOTAL_BALANCE_IN_CRYPTO = CRYPTO_BALANCE + (FIAT_BALANCE / PRICE)
 
-        ORDER = meditate(calculate_quote(), PRICE)
-        do_post_trade_action()
-        daily_report()
-        sleep_for(CONF.period_in_seconds)
+        if ORDER:
+            # we need the quote values after the trade
+            do_post_trade_action()
+            ORDER = None
+        else:
+            ORDER = meditate(calculate_quote(), PRICE)
+            daily_report()
+        if not ORDER:
+            sleep_for(CONF.period_in_seconds)
