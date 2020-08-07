@@ -22,6 +22,7 @@ import requests
 
 MIN_ORDER_SIZE = 0.001
 ORDER = None
+BAL = {'cryptoBalance': 0, 'totalBalanceInCrypto': 0, 'price': 0}
 EMAIL_SENT = False
 EMAIL_ONLY = False
 KEEP_ORDERS = False
@@ -37,7 +38,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.17'
+            self.bot_version = '0.1.18'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -381,17 +382,18 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         part['mail'].append("Wallet balance {}: {:>18.4f}".format(CONF.base, wallet_balance))
         part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
     price = get_current_price()
+    stats = load_statistics()
     if CONF.exchange == 'bitmex':
-        today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, daily)
+        today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, stats, daily)
         append_margin_change(part, today)
     else:
         cb = get_crypto_balance()
         crypto_total = cb['total'] if cb else 0
         fb = get_fiat_balance()
         fiat_total = fb['total'] if fb else 0
-        today = calculate_daily_statistics(crypto_total, fiat_total, price, daily)
+        today = calculate_daily_statistics(crypto_total, fiat_total, price, stats, daily)
         append_balance_change(part, today)
-    append_net_change(part, today)
+    append_total_change(part, today, stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1), price)
     append_price_change(part, today, price)
     used_margin = calculate_used_margin_percentage(margin_balance)
     part['mail'].append("Used margin: {:>23.2f}%".format(used_margin))
@@ -460,14 +462,16 @@ def append_balance_change(part: dict, today: dict):
     part['csv'].append("Balance {}:;{:.2f};{}".format(CONF.quote, today['fmBal'], change))
 
 
-def append_net_change(part: dict, today: dict):
-    if 'mBalChan24' in today and 'fmBalChan24' in today:
-        change = "{:+.2f}".format(today['mBalChan24'] + today['fmBalChan24'])
+def append_total_change(part: dict, today: dict, yesterday: dict, price: float):
+    if yesterday and 'mBal' in today and 'fmBal' in today:
+        yesterday_total_in_fiat = yesterday['mBal'] * yesterday['price'] + yesterday['fmBal']
+        today_total_in_fiat = today['mBal'] * price + today['fmBal']
+        change = "{:+.2f}".format((today_total_in_fiat / yesterday_total_in_fiat - 1) * 100)
     else:
         change = "% n/a"
-    net_result = "Net result: {:>24}%*".format(change)
+    net_result = "Total change: {:>22}%*".format(change)
     part['mail'].append(net_result)
-    part['csv'].append("Net result:;{}%".format(change))
+    part['csv'].append("Total change:;{}%".format(change))
 
 
 def append_price_change(part: dict, today: dict, price: float):
@@ -486,17 +490,16 @@ def append_price_change(part: dict, today: dict, price: float):
     part['csv'].append("{} price {}:;{:.2f};{}".format(CONF.base, CONF.quote, price, change))
 
 
-def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, update_stats: bool):
+def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats: Stats, update_stats: bool):
     """
     Calculates, updates and persists the change in the margin balance compared with yesterday
     :param m_bal: todays margin balance
     :param fm_bal: todays fiat margin balance
     :param price: the current rate
+    :param stats: the loaded stats
     :param update_stats: update and persists the statistic values
     :return: todays statistics including price and margin balance changes compared with 24 hours ago
     """
-    stats = load_statistics()
-
     today = {'mBal': m_bal, 'fmBal': fm_bal, 'price': price}
     if stats is None:
         if update_stats and datetime.datetime.utcnow().time() > datetime.datetime(2012, 1, 17, 12, 1).time():
@@ -746,9 +749,9 @@ def get_current_price(attempts: int = 0, limit: int = None):
 
 def connect_to_exchange():
     exchanges = {}
-    for id in ccxt.exchanges:
-        exchange = getattr(ccxt, id)
-        exchanges[id] = exchange
+    for ex in ccxt.exchanges:
+        exchange = getattr(ccxt, ex)
+        exchanges[ex] = exchange
 
     exchange = exchanges[CONF.exchange]({
         'enableRateLimit': True,
@@ -820,7 +823,7 @@ def calculate_buy_order_size(reference_quote: float, reference_price: float, act
     :return: the calculated buy_order_size in crypto or None
     """
     quote = reference_quote * (reference_price / actual_price)
-    size = TOTAL_BALANCE_IN_CRYPTO / (100 / quote) / 1.01
+    size = BAL['totalBalanceInCrypto'] / (100 / quote) / 1.01
     if size > MIN_ORDER_SIZE:
         return round(size - 0.000000006, 8)
     LOG.info("Order size %f < %f", size, MIN_ORDER_SIZE)
@@ -876,7 +879,7 @@ def calculate_sell_order_size(reference_quote: float, reference_price: float, ac
     :return: the calculated sell_order_size or None
     """
     quote = reference_quote / (reference_price / actual_price)
-    size = TOTAL_BALANCE_IN_CRYPTO / (100 / quote) / 1.01
+    size = BAL['totalBalanceInCrypto'] / (100 / quote) / 1.01
     return round(size - 0.000000006, 8) if size > MIN_ORDER_SIZE else None
 
 
@@ -1199,9 +1202,26 @@ def meditate(quote: float, price: float):
 
 
 def calculate_quote():
-    crypto_quote = (CRYPTO_BALANCE / TOTAL_BALANCE_IN_CRYPTO) * 100 if CRYPTO_BALANCE > 0 else 0
-    LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, TOTAL_BALANCE_IN_CRYPTO, CRYPTO_BALANCE, crypto_quote, PRICE)
+    crypto_quote = (BAL['cryptoBalance'] / BAL['totalBalanceInCrypto']) * 100 if BAL['cryptoBalance'] > 0 else 0
+    LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, BAL['totalBalanceInCrypto'], BAL['cryptoBalance'], crypto_quote, BAL['price'])
     return crypto_quote
+
+
+def calculate_balances():
+    balance = {'cryptoBalance': 0, 'totalBalanceInCrypto': 0, 'price': 0}
+    if CONF.exchange == 'bitmex':
+        pos = get_position_info()
+        # aka margin balance
+        balance['totalBalanceInCrypto'] = get_crypto_balance()['total']
+        balance['price'] = pos['lastPrice']
+        if pos['avgEntryPrice']:
+            balance['cryptoBalance'] = (abs(pos['foreignNotional']) / pos['avgEntryPrice'] * balance['price']) / pos['avgEntryPrice']
+        return balance
+    balance['cryptoBalance'] = get_crypto_balance()['total']
+    fiat_balance = get_fiat_balance()['total']
+    balance['price'] = get_current_price()
+    balance['totalBalanceInCrypto'] = balance['cryptoBalance'] + (fiat_balance / balance['price'])
+    return balance
 
 
 if __name__ == '__main__':
@@ -1230,6 +1250,7 @@ if __name__ == '__main__':
     EXCHANGE = connect_to_exchange()
 
     if EMAIL_ONLY:
+        BAL = calculate_balances()
         daily_report(True)
         sys.exit(0)
 
@@ -1245,27 +1266,11 @@ if __name__ == '__main__':
         cancel_all_open_orders()
 
     while 1:
-        if CONF.exchange == 'bitmex':
-            POS = get_position_info()
-            # aka margin balance
-            TOTAL_BALANCE_IN_CRYPTO = get_crypto_balance()['total']
-            PRICE = POS['lastPrice']
-            if POS['avgEntryPrice']:
-                CRYPTO_BALANCE = (abs(POS['foreignNotional']) / POS['avgEntryPrice'] * PRICE) / POS['avgEntryPrice']
-            else:
-                CRYPTO_BALANCE = 0
-        else:
-            CRYPTO_BALANCE = get_crypto_balance()['total']
-            FIAT_BALANCE = get_fiat_balance()['total']
-            PRICE = get_current_price()
-            TOTAL_BALANCE_IN_CRYPTO = CRYPTO_BALANCE + (FIAT_BALANCE / PRICE)
-
+        BAL = calculate_balances()
+        ORDER = meditate(calculate_quote(), BAL['price'])
         if ORDER:
-            # we need the quote values after the trade
+            # we need the values after the trade
+            BAL = calculate_balances()
             do_post_trade_action()
-            ORDER = None
-        else:
-            ORDER = meditate(calculate_quote(), PRICE)
-            daily_report()
-        if not ORDER:
-            sleep_for(CONF.period_in_seconds)
+        daily_report()
+        sleep_for(CONF.period_in_seconds)

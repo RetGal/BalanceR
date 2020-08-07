@@ -11,37 +11,37 @@ import balancer
 class BalancerTest(unittest.TestCase):
 
     def test_calculate_buy_order_size_no_change(self):
-        balancer.TOTAL_BALANCE_IN_CRYPTO = 1
+        balancer.BAL['totalBalanceInCrypto'] = 1
         order_size = balancer.calculate_buy_order_size(10, 10000, 10000)
 
         self.assertAlmostEqual(0.099, order_size, 3)
 
     def test_calculate_buy_order_size_positive_price_change(self):
-        balancer.TOTAL_BALANCE_IN_CRYPTO = 1
+        balancer.BAL['totalBalanceInCrypto'] = 1
         order_size = balancer.calculate_buy_order_size(10, 10000, 10100)
 
         self.assertAlmostEqual(0.098, order_size, 3)
 
     def test_calculate_buy_order_size_negative_price_change(self):
-        balancer.TOTAL_BALANCE_IN_CRYPTO = 1
+        balancer.BAL['totalBalanceInCrypto'] = 1
         order_size = balancer.calculate_buy_order_size(10, 10000, 9900)
 
         self.assertAlmostEqual(0.100, order_size, 3)
 
     def test_calculate_sell_order_size_no_change(self):
-        balancer.TOTAL_BALANCE_IN_CRYPTO = 1
+        balancer.BAL['totalBalanceInCrypto'] = 1
         order_size = balancer.calculate_sell_order_size(10, 10000, 10000)
 
         self.assertAlmostEqual(0.099, order_size, 3)
 
     def test_calculate_sell_order_size_positive_price_change(self):
-        balancer.TOTAL_BALANCE_IN_CRYPTO = 1
+        balancer.BAL['totalBalanceInCrypto'] = 1
         order_size = balancer.calculate_sell_order_size(10, 10000, 10100)
 
         self.assertAlmostEqual(0.100, order_size, 3)
 
     def test_calculate_sell_order_size_negative_price_change(self):
-        balancer.TOTAL_BALANCE_IN_CRYPTO = 1
+        balancer.BAL['totalBalanceInCrypto'] = 1
         order_size = balancer.calculate_sell_order_size(10, 10000, 9900)
 
         self.assertAlmostEqual(0.098, order_size, 3)
@@ -151,9 +151,9 @@ class BalancerTest(unittest.TestCase):
     @patch('balancer.logging')
     def test_calculate_quote_very_low(self, mock_logger):
         balancer.LOG = mock_logger
-        balancer.CRYPTO_BALANCE = 0.02
-        balancer.TOTAL_BALANCE_IN_CRYPTO = 1.00
-        balancer.PRICE = 0
+        balancer.BAL['cryptoBalance'] = 0.02
+        balancer.BAL['totalBalanceInCrypto'] = 1.00
+        balancer.BAL['price'] = 0
 
         quote = balancer.calculate_quote()
 
@@ -162,9 +162,9 @@ class BalancerTest(unittest.TestCase):
     @patch('balancer.logging')
     def test_calculate_quote_low(self, mock_logger):
         balancer.LOG = mock_logger
-        balancer.CRYPTO_BALANCE = 1.002
-        balancer.TOTAL_BALANCE_IN_CRYPTO = 2.002
-        balancer.PRICE = 0
+        balancer.BAL['cryptoBalance'] = 1.002
+        balancer.BAL['totalBalanceInCrypto'] = 2.002
+        balancer.BAL['price'] = 0
 
         quote = balancer.calculate_quote()
 
@@ -173,9 +173,9 @@ class BalancerTest(unittest.TestCase):
     @patch('balancer.logging')
     def test_calculate_quote_lowest(self, mock_logger):
         balancer.LOG = mock_logger
-        balancer.CRYPTO_BALANCE = 1294.79168016 / 6477
-        balancer.TOTAL_BALANCE_IN_CRYPTO = 2584.87168016 / 6477
-        balancer.PRICE = 0
+        balancer.BAL['cryptoBalance'] = 1294.79168016 / 6477
+        balancer.BAL['totalBalanceInCrypto'] = 2584.87168016 / 6477
+        balancer.BAL['price'] = 0
 
         quote = balancer.calculate_quote()
 
@@ -184,9 +184,9 @@ class BalancerTest(unittest.TestCase):
     @patch('balancer.logging')
     def test_calculate_quote_high(self, mock_logger):
         balancer.LOG = mock_logger
-        balancer.CRYPTO_BALANCE = 0.99
-        balancer.TOTAL_BALANCE_IN_CRYPTO = 1.00
-        balancer.PRICE = 0
+        balancer.BAL['cryptoBalance'] = 0.99
+        balancer.BAL['totalBalanceInCrypto'] =1.00
+        balancer.BAL['price'] = 0
 
         quote = balancer.calculate_quote()
 
@@ -233,20 +233,18 @@ class BalancerTest(unittest.TestCase):
         self.assertTrue(stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1) is not None)
         self.assertTrue(stats.get_day(int(datetime.date.today().strftime("%Y%j"))) is not None)
 
-    @patch('balancer.load_statistics', return_value=None)
     @patch('balancer.persist_statistics')
-    def test_calculate_statistics_first_day_without_persist(self, mock_persist_statistics, mock_load_statistics):
-        today = balancer.calculate_daily_statistics(90, 110, 8000.0, False)
+    def test_calculate_statistics_first_day_without_persist(self, mock_persist_statistics):
+        today = balancer.calculate_daily_statistics(90, 110, 8000.0, None, False)
 
         self.assertTrue(today['mBal'] == 90)
         self.assertTrue(today['fmBal'] == 110)
         self.assertTrue(today['price'] == 8000.0)
         mock_persist_statistics.assert_not_called()
 
-    @patch('balancer.load_statistics', return_value=balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1,
-                                                                   {'mBal': 50.1, 'fmBal': 100, 'price': 8000.0}))
-    def test_calculate_statistics_positive_change(self, mock_load_statistics):
-        today = balancer.calculate_daily_statistics(100.2, 105, 8800.0, False)
+    def test_calculate_statistics_positive_change(self):
+        stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1, {'mBal': 50.1, 'fmBal': 100, 'price': 8000.0})
+        today = balancer.calculate_daily_statistics(100.2, 105, 8800.0, stats, False)
 
         self.assertEqual(100.2, today['mBal'])
         self.assertEqual(105, today['fmBal'])
@@ -255,11 +253,10 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(5, today['fmBalChan24'])
         self.assertEqual(10.0, today['priceChan24'])
 
-    @patch('balancer.load_statistics', return_value=balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1,
-                                                                   {'mBal': 150.3, 'fmBal': 100, 'price': 8000.0}))
     @patch('balancer.persist_statistics')
-    def test_calculate_statistics_negative_change(self, mock_persist_statistics, mock_load_statistics):
-        today = balancer.calculate_daily_statistics(100.2, 90, 7600.0, True)
+    def test_calculate_statistics_negative_change(self, mock_persist_statistics):
+        stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1, {'mBal': 150.3, 'fmBal': 100, 'price': 8000.0})
+        today = balancer.calculate_daily_statistics(100.2, 90, 7600.0, stats, True)
 
         self.assertEqual(100.2, today['mBal'])
         self.assertEqual(7600.0, today['price'])
@@ -469,13 +466,59 @@ class BalancerTest(unittest.TestCase):
         self.assertTrue(mail_part.rfind('n/a') > 0)
         self.assertTrue(csv_part.rfind('n/a') > 0)
 
-    def test_append_net_change(self):
+    def test_append_net_change_positive_fiat(self):
         part = {'mail': [], 'csv': []}
-        today = {'mBalChan24': -0.01, 'fmBalChan24': +0.03}
+        today = {'mBal': 1, 'fmBal': 10100}
+        yesterday = {'mBal': 1, 'fmBal': 10000, 'price': 10000}
 
-        balancer.append_net_change(part, today)
+        balancer.append_total_change(part, today, yesterday, 10000)
 
-        self.assertEqual('Net result:;+0.02%', part['csv'][0])
+        self.assertEqual('Total change:;+0.50%', part['csv'][0])
+
+    def test_append_net_change_positive_crypto(self):
+        part = {'mail': [], 'csv': []}
+        today = {'mBal': 1.01, 'fmBal': 10000}
+        yesterday = {'mBal': 1, 'fmBal': 10000, 'price': 10000}
+
+        balancer.append_total_change(part, today, yesterday, 10000)
+
+        self.assertEqual('Total change:;+0.50%', part['csv'][0])
+
+    def test_append_net_change_positive_crypto_by_price(self):
+        part = {'mail': [], 'csv': []}
+        today = {'mBal': 1, 'fmBal': 4000}
+        yesterday = {'mBal': 1, 'fmBal': 4000, 'price': 10000}
+
+        balancer.append_total_change(part, today, yesterday, 10070)
+
+        self.assertEqual('Total change:;+0.50%', part['csv'][0])
+
+    def test_append_net_change_negative_fiat(self):
+        part = {'mail': [], 'csv': []}
+        today = {'mBal': 1, 'fmBal': 10000}
+        yesterday = {'mBal': 1, 'fmBal': 10100, 'price': 10000}
+
+        balancer.append_total_change(part, today, yesterday, 10000)
+
+        self.assertEqual('Total change:;-0.50%', part['csv'][0])
+
+    def test_append_net_change_negative_crypto(self):
+        part = {'mail': [], 'csv': []}
+        today = {'mBal': 1, 'fmBal': 10000}
+        yesterday = {'mBal': 1.01, 'fmBal': 10000, 'price': 10000}
+
+        balancer.append_total_change(part, today, yesterday, 10000)
+
+        self.assertEqual('Total change:;-0.50%', part['csv'][0])
+
+    def test_append_net_change_negative_crypto_by_price(self):
+        part = {'mail': [], 'csv': []}
+        today = {'mBal': 1, 'fmBal': 10000}
+        yesterday = {'mBal': 1, 'fmBal': 10000, 'price': 10100}
+
+        balancer.append_total_change(part, today, yesterday, 10000)
+
+        self.assertEqual('Total change:;-0.50%', part['csv'][0])
 
     def test_append_price_change(self):
         balancer.CONF = self.create_default_conf()
