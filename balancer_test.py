@@ -82,71 +82,74 @@ class BalancerTest(unittest.TestCase):
 
         mock_get_open_orders.assert_not_called()
 
-    @patch('balancer.do_buy')
-    def test_meditate_quote_too_low(self, mock_do_buy):
+    def test_meditate_quote_too_low(self):
         balancer.CONF = self.create_default_conf()
 
-        balancer.meditate(35, 10000)
+        action = balancer.meditate(35, 10000)
 
-        mock_do_buy.assert_called_with(15, 10000)
+        self.assertEqual('BUY', action['direction'])
+        self.assertEqual(15, action['percentage'])
+        self.assertEqual(10000, action['price'])
 
-    @patch('balancer.do_buy')
     @patch('balancer.fetch_mayer', return_value={'current': 1.00})
-    def test_meditate_quote_too_low_auto_quote_enabled(self, mock_mayer, mock_do_buy):
+    def test_meditate_quote_too_low_auto_quote_enabled(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = True
 
-        balancer.meditate(35, 10000)
+        action = balancer.meditate(35, 10000)
 
-        mock_do_buy.assert_called_with(15, 10000)
+        self.assertEqual('BUY', action['direction'])
+        self.assertEqual(15, action['percentage'])
+        self.assertEqual(10000, action['price'])
 
-    @patch('balancer.do_buy')
     @patch('balancer.fetch_mayer', return_value={'current': 0.5})
-    def test_meditate_quote_too_low_auto_quote_enabled_low_mayer(self, mock_mayer, mock_do_buy):
+    def test_meditate_quote_too_low_auto_quote_enabled_low_mayer(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = True
 
-        balancer.meditate(40, 10000)
+        action = balancer.meditate(40, 10000)
 
-        mock_do_buy.assert_called_with(50, 10000)
+        self.assertEqual('BUY', action['direction'])
+        self.assertEqual(50, action['percentage'])
+        self.assertEqual(10000, action['price'])
 
-    @patch('balancer.do_sell')
-    def test_meditate_quote_too_high(self, mock_do_sell):
+    def test_meditate_quote_too_high(self):
         balancer.CONF = self.create_default_conf()
 
-        balancer.meditate(56.5, 10000)
+        action = balancer.meditate(56.5, 10000)
 
-        mock_do_sell.assert_called_with(6.5, 10000)
+        self.assertEqual('SELL', action['direction'])
+        self.assertEqual(6.5, action['percentage'])
+        self.assertEqual(10000, action['price'])
 
-    @patch('balancer.do_sell')
-    @patch('balancer.do_buy')
-    def test_meditate_quote_within_tolerance(self, mock_do_buy, mock_do_sell):
+    def test_meditate_quote_within_tolerance(self):
         balancer.CONF = self.create_default_conf()
 
-        balancer.meditate(51, 10000)
+        action = balancer.meditate(51, 10000)
 
-        mock_do_buy.assert_not_called()
-        mock_do_sell.assert_not_called()
+        self.assertIsNone(action)
 
-    @patch('balancer.do_sell')
     @patch('balancer.fetch_mayer', return_value={'current': 1.60})
-    def test_meditate_quote_too_high_auto_quote_enabled_high_mayer(self, mock_mayer, mock_do_sell):
+    def test_meditate_quote_too_high_auto_quote_enabled_high_mayer(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = True
 
-        balancer.meditate(35, 10000)
+        action = balancer.meditate(35, 10000)
 
-        mock_do_sell.assert_called_with(3.75, 10000)
+        self.assertEqual('SELL', action['direction'])
+        self.assertEqual(3.75, action['percentage'])
+        self.assertEqual(10000, action['price'])
 
-    @patch('balancer.do_sell')
     @patch('balancer.fetch_mayer', return_value={'current': 5.60})
-    def test_meditate_quote_too_high_auto_quote_enabled_very_high_mayer(self, mock_mayer, mock_do_sell):
+    def test_meditate_quote_too_high_auto_quote_enabled_very_high_mayer(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = True
 
-        balancer.meditate(35, 10000)
+        action = balancer.meditate(35, 10000)
 
-        mock_do_sell.assert_called_with(25, 10000)
+        self.assertEqual('SELL', action['direction'])
+        self.assertEqual(25, action['percentage'])
+        self.assertEqual(10000, action['price'])
 
     @patch('balancer.logging')
     def test_calculate_quote_very_low(self, mock_logger):

@@ -38,7 +38,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.18'
+            self.bot_version = '0.1.19'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -774,14 +774,13 @@ def write_control_file():
         file.write(str(os.getpid()) + ' ' + INSTANCE)
 
 
-def do_buy(quote: float, reference_price: float):
+def do_buy(quote: float, reference_price: float, attempt: int):
     """
     Buys at market price lowered by configured percentage or at market price if not successful
     within the configured trade attempts
     :return: Order
     """
-    i = 1
-    while i <= CONF.trade_trials:
+    if attempt <= CONF.trade_trials:
         buy_price = calculate_buy_price(get_current_price())
         order_size = calculate_buy_order_size(quote, reference_price, buy_price)
         if order_size is None:
@@ -795,10 +794,9 @@ def do_buy(quote: float, reference_price: float):
         order_status = fetch_order_status(order.id)
         if order_status in ['open', 'active']:
             cancel_order(order)
-            i += 1
-            daily_report()
-        else:
-            return order
+            return None
+        return order
+
     order_size = calculate_buy_order_size(quote, reference_price, get_current_price())
     if order_size is None:
         return None
@@ -830,14 +828,13 @@ def calculate_buy_order_size(reference_quote: float, reference_price: float, act
     return None
 
 
-def do_sell(quote: float, reference_price: float):
+def do_sell(quote: float, reference_price: float, attempt: int):
     """
     Sells at market price raised by configured percentage or at market price if not successful
     within the configured trade attempts
     :return: Order
     """
-    i = 1
-    while i <= CONF.trade_trials:
+    if attempt <= CONF.trade_trials:
         sell_price = calculate_sell_price(get_current_price())
         order_size = calculate_sell_order_size(quote, reference_price, sell_price)
         if order_size is None:
@@ -851,10 +848,9 @@ def do_sell(quote: float, reference_price: float):
         order_status = fetch_order_status(order.id)
         if order_status in ['open', 'active']:
             cancel_order(order)
-            i += 1
-            daily_report()
-        else:
-            return order
+            return None
+        return order
+
     order_size = calculate_sell_order_size(quote, reference_price, get_current_price())
     if order_size is None:
         return None
@@ -1182,6 +1178,7 @@ def do_post_trade_action():
 
 
 def meditate(quote: float, price: float):
+    action = {}
     if CONF.auto_quote:
         mm = fetch_mayer()
         if mm is None:
@@ -1195,9 +1192,15 @@ def meditate(quote: float, price: float):
     else:
         target_quote = CONF.crypto_quote_in_percent
     if quote < target_quote - CONF.tolerance_in_percent:
-        return do_buy(target_quote - quote, price)
+        action['direction'] = 'BUY'
+        action['percentage'] = target_quote - quote
+        action['price'] = price
+        return action
     if quote > target_quote + CONF.tolerance_in_percent:
-        return do_sell(quote - target_quote, price)
+        action['direction'] = 'SELL'
+        action['percentage'] = quote - target_quote
+        action['price'] = price
+        return action
     return None
 
 
@@ -1267,10 +1270,22 @@ if __name__ == '__main__':
 
     while 1:
         BAL = calculate_balances()
-        ORDER = meditate(calculate_quote(), BAL['price'])
-        if ORDER:
-            # we need the values after the trade
-            BAL = calculate_balances()
-            do_post_trade_action()
+        ACTION = meditate(calculate_quote(), BAL['price'])
+        ATTEMPT: int = 1
+        while ACTION:
+            if ACTION['direction'] == 'BUY':
+                ORDER = do_buy(ACTION['percentage'], ACTION['price'], ATTEMPT)
+            else:
+                ORDER = do_sell(ACTION['percentage'], ACTION['price'], ATTEMPT)
+            if ORDER:
+                # we need the values after the trade
+                BAL = calculate_balances()
+                do_post_trade_action()
+                ACTION = None
+            else:
+                daily_report()
+                ATTEMPT += 1
+                BAL = calculate_balances()
+                ACTION = meditate(calculate_quote(), BAL['price'])
         daily_report()
         sleep_for(CONF.period_in_seconds)
