@@ -474,54 +474,72 @@ class BalancerTest(unittest.TestCase):
         today = {'mBal': 1, 'fmBal': 10100}
         yesterday = {'mBal': 1, 'fmBal': 10000, 'price': 10000}
 
-        balancer.append_total_change(part, today, yesterday, 10000)
+        balancer.append_value_change(part, today, yesterday, 10000)
 
-        self.assertEqual('Total change:;+0.50%', part['csv'][0])
+        self.assertEqual('Value change:;+0.50%', part['csv'][0])
 
     def test_append_net_change_positive_crypto(self):
         part = {'mail': [], 'csv': []}
         today = {'mBal': 1.01, 'fmBal': 10000}
         yesterday = {'mBal': 1, 'fmBal': 10000, 'price': 10000}
 
-        balancer.append_total_change(part, today, yesterday, 10000)
+        balancer.append_value_change(part, today, yesterday, 10000)
 
-        self.assertEqual('Total change:;+0.50%', part['csv'][0])
+        self.assertEqual('Value change:;+0.50%', part['csv'][0])
 
     def test_append_net_change_positive_crypto_by_price(self):
         part = {'mail': [], 'csv': []}
         today = {'mBal': 1, 'fmBal': 4000}
         yesterday = {'mBal': 1, 'fmBal': 4000, 'price': 10000}
 
-        balancer.append_total_change(part, today, yesterday, 10070)
+        balancer.append_value_change(part, today, yesterday, 10070)
 
-        self.assertEqual('Total change:;+0.50%', part['csv'][0])
+        self.assertEqual('Value change:;+0.50%', part['csv'][0])
 
     def test_append_net_change_negative_fiat(self):
         part = {'mail': [], 'csv': []}
         today = {'mBal': 1, 'fmBal': 10000}
         yesterday = {'mBal': 1, 'fmBal': 10100, 'price': 10000}
 
-        balancer.append_total_change(part, today, yesterday, 10000)
+        balancer.append_value_change(part, today, yesterday, 10000)
 
-        self.assertEqual('Total change:;-0.50%', part['csv'][0])
+        self.assertEqual('Value change:;-0.50%', part['csv'][0])
 
     def test_append_net_change_negative_crypto(self):
         part = {'mail': [], 'csv': []}
         today = {'mBal': 1, 'fmBal': 10000}
         yesterday = {'mBal': 1.01, 'fmBal': 10000, 'price': 10000}
 
-        balancer.append_total_change(part, today, yesterday, 10000)
+        balancer.append_value_change(part, today, yesterday, 10000)
 
-        self.assertEqual('Total change:;-0.50%', part['csv'][0])
+        self.assertEqual('Value change:;-0.50%', part['csv'][0])
 
     def test_append_net_change_negative_crypto_by_price(self):
         part = {'mail': [], 'csv': []}
         today = {'mBal': 1, 'fmBal': 10000}
         yesterday = {'mBal': 1, 'fmBal': 10000, 'price': 10100}
 
-        balancer.append_total_change(part, today, yesterday, 10000)
+        balancer.append_value_change(part, today, yesterday, 10000)
 
-        self.assertEqual('Total change:;-0.50%', part['csv'][0])
+        self.assertEqual('Value change:;-0.50%', part['csv'][0])
+
+    def test_append_trading_result_positive(self):
+        part = {'mail': [], 'csv': []}
+        today = {'mBal': 0.1, 'fmBal': 10002.50}
+        yesterday = {'mBal': 0.09, 'fmBal': 10100.00}
+
+        balancer.append_trading_result(part, today, yesterday, 10000)
+
+        self.assertEqual('Trading result in EUR:;+2.50', part['csv'][0])
+
+    def test_append_trading_result_negative(self):
+        part = {'mail': [], 'csv': []}
+        today = {'mBal': 0.1, 'fmBal': 9999}
+        yesterday = {'mBal': 0.09, 'fmBal': 10100}
+
+        balancer.append_trading_result(part, today, yesterday, 10000)
+
+        self.assertEqual('Trading result in EUR:;-1.00', part['csv'][0])
 
     def test_append_price_change(self):
         balancer.CONF = self.create_default_conf()

@@ -38,7 +38,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.19'
+            self.bot_version = '0.1.20'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -269,8 +269,8 @@ def create_report_part_settings():
                      "Daily report: {:>21}".format(str('Y' if CONF.daily_report is True else 'N')),
                      "Trade report: {:>21}".format(str('Y' if CONF.trade_report is True else 'N')),
                      "Trade trials: {:>21}".format(CONF.trade_trials),
-                     "Order adjust seconds: {:>15}".format(CONF.order_adjust_seconds),
-                     "Trade advantage in %: {:>15}".format(CONF.trade_advantage_in_percent)],
+                     "Order adjust seconds: {:>13}".format(CONF.order_adjust_seconds),
+                     "Trade advantage in %: {:>13}".format(CONF.trade_advantage_in_percent)],
             'csv': ["Quote {} in %:;{}".format(CONF.base, CONF.crypto_quote_in_percent),
                     "Auto-Quote:;{}".format(str('Y' if CONF.auto_quote is True else 'N')),
                     "Tolerance in %:;{}".format(CONF.tolerance_in_percent),
@@ -393,7 +393,9 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         fiat_total = fb['total'] if fb else 0
         today = calculate_daily_statistics(crypto_total, fiat_total, price, stats, daily)
         append_balance_change(part, today)
-    append_total_change(part, today, stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1), price)
+    yesterday = stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
+    append_value_change(part, today, yesterday, price)
+    append_trading_result(part, today, yesterday, price)
     append_price_change(part, today, price)
     used_margin = calculate_used_margin_percentage(margin_balance)
     part['mail'].append("Used margin: {:>23.2f}%".format(used_margin))
@@ -462,16 +464,25 @@ def append_balance_change(part: dict, today: dict):
     part['csv'].append("Balance {}:;{:.2f};{}".format(CONF.quote, today['fmBal'], change))
 
 
-def append_total_change(part: dict, today: dict, yesterday: dict, price: float):
+def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
     if yesterday and 'mBal' in today and 'fmBal' in today:
         yesterday_total_in_fiat = yesterday['mBal'] * yesterday['price'] + yesterday['fmBal']
         today_total_in_fiat = today['mBal'] * price + today['fmBal']
         change = "{:+.2f}".format((today_total_in_fiat / yesterday_total_in_fiat - 1) * 100)
     else:
         change = "% n/a"
-    net_result = "Total change: {:>22}%*".format(change)
-    part['mail'].append(net_result)
-    part['csv'].append("Total change:;{}%".format(change))
+    part['mail'].append("Value change: {:>22}%*".format(change))
+    part['csv'].append("Value change:;{}%".format(change))
+
+
+def append_trading_result(part: dict, today: dict, yesterday: dict, price: float):
+    if yesterday and 'mBal' in today and 'fmBal' in today:
+        trading_result = (today['mBal'] - yesterday['mBal']) * price + today['fmBal'] - yesterday['fmBal']
+        trading_result = "{:+.2f}".format(trading_result)
+    else:
+        trading_result = "% n/a"
+    part['mail'].append("Trading result in {}: {:>13}*".format(CONF.quote, trading_result))
+    part['csv'].append("Trading result in {}:;{}".format(CONF.quote, trading_result))
 
 
 def append_price_change(part: dict, today: dict, price: float):
