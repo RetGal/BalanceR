@@ -524,6 +524,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('Value change:;-0.50%', part['csv'][0])
 
     def test_append_trading_result_positive(self):
+        balancer.CONF.quote = 'EUR'
         part = {'mail': [], 'csv': []}
         today = {'mBal': 0.1, 'fmBal': 10002.50}
         yesterday = {'mBal': 0.09, 'fmBal': 10100.00}
@@ -533,13 +534,24 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('Trading result in EUR:;+2.50', part['csv'][0])
 
     def test_append_trading_result_negative(self):
+        balancer.CONF.quote = 'USD'
         part = {'mail': [], 'csv': []}
         today = {'mBal': 0.1, 'fmBal': 9999}
         yesterday = {'mBal': 0.09, 'fmBal': 10100}
 
         balancer.append_trading_result(part, today, yesterday, 10000)
 
-        self.assertEqual('Trading result in EUR:;-1.00', part['csv'][0])
+        self.assertEqual('Trading result in USD:;-1.00', part['csv'][0])
+
+    def test_append_trading_result_real_life(self):
+        balancer.CONF.quote = 'EUR'
+        part = {'mail': [], 'csv': []}
+        today = {'mBal': 0.2775, 'fmBal': 3132.82}
+        yesterday = {'mBal': 0.2746, 'fmBal': 3164.98}
+
+        balancer.append_trading_result(part, today, yesterday, 11222)
+
+        self.assertEqual('Trading result in EUR:;+0.38', part['csv'][0])
 
     def test_append_price_change(self):
         balancer.CONF = self.create_default_conf()
