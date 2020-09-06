@@ -38,7 +38,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.20'
+            self.bot_version = '0.1.21'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -114,10 +114,10 @@ class Stats:
     """
     Holds the daily statistics in a ring memory (today plus the previous two)
     """
-
-    def __init__(self, day_of_year: int, data: dict):
+    def __init__(self, day_of_year: int = None, data: dict = None):
         self.days = []
-        self.add_day(day_of_year, data)
+        if day_of_year and data:
+            self.add_day(day_of_year, data)
 
     def add_day(self, day_of_year: int, data: dict):
         existing = self.get_day(day_of_year)
@@ -513,14 +513,12 @@ def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats:
     """
     today = {'mBal': m_bal, 'fmBal': fm_bal, 'price': price}
     if stats is None:
-        if update_stats and datetime.datetime.utcnow().time() > datetime.datetime(2012, 1, 17, 12, 1).time():
-            stats = Stats(int(datetime.date.today().strftime("%Y%j")), today)
-            persist_statistics(stats)
-        return today
-
-    if update_stats and datetime.datetime.utcnow().time() > datetime.datetime(2012, 1, 17, 12, 1).time():
+        stats = Stats()
+    if update_stats and datetime.datetime.utcnow().time() > datetime.datetime(2012, 1, 17, 12, 1).time() and not \
+            stats.get_day(int(datetime.date.today().strftime("%Y%j"))):
         stats.add_day(int(datetime.date.today().strftime("%Y%j")), today)
         persist_statistics(stats)
+
     before_24h = stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
     if before_24h:
         today['mBalChan24'] = round((today['mBal'] / before_24h['mBal'] - 1) * 100, 2)
