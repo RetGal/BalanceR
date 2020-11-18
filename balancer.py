@@ -38,7 +38,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.21'
+            self.bot_version = '0.1.22'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1226,6 +1226,8 @@ def calculate_balances():
         # aka margin balance
         balance['totalBalanceInCrypto'] = get_crypto_balance()['total']
         balance['price'] = pos['lastPrice']
+        if not balance['price']:
+            balance['price'] = get_current_price()
         if pos['avgEntryPrice']:
             balance['cryptoBalance'] = (abs(pos['foreignNotional']) / pos['avgEntryPrice'] * balance['price']) / pos['avgEntryPrice']
         return balance
