@@ -1,0 +1,8 @@
+[config]
+# exchange properties
+exchange = "bitmex"
+api_key = "key"
+api_secret = "secret"
+
+# bot properties
+db_name = "mayer.db"
