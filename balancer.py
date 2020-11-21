@@ -38,7 +38,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.1.22'
+            self.bot_version = '0.2.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -195,6 +195,15 @@ def append_mayer(part: dict):
     else:
         part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], 2.4, advice))
     part['csv'].append("Mayer multiple:;{:.2f}".format(mayer['current']))
+
+
+def calculate_mayer(price: float):
+    mayer_file = "mayer.avg"
+    if mayer_file and os.path.isfile(mayer_file):
+        with open("mayer.avg", "rt") as file:
+            average = float(file.read())
+            return {'current': price/average}
+    return None
 
 
 def daily_report(immediately: bool = False):
@@ -1189,9 +1198,11 @@ def do_post_trade_action():
 def meditate(quote: float, price: float):
     action = {}
     if CONF.auto_quote:
-        mm = fetch_mayer()
+        mm = calculate_mayer(price)
         if mm is None:
-            return None
+            mm = fetch_mayer()
+            if mm is None:
+                return None
         target_quote = CONF.crypto_quote_in_percent / mm['current']
         if target_quote < 10:
             target_quote = 10
