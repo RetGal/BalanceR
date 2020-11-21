@@ -91,7 +91,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(15, action['percentage'])
         self.assertEqual(10000, action['price'])
 
-    @patch('balancer.fetch_mayer', return_value={'current': 1.00})
+    @patch('balancer.read_mayer', return_value=10000)
     def test_meditate_quote_too_low_auto_quote_enabled(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = True
@@ -102,8 +102,9 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(15, action['percentage'])
         self.assertEqual(10000, action['price'])
 
+    @patch('balancer.read_mayer', return_value=None)
     @patch('balancer.fetch_mayer', return_value={'current': 0.5})
-    def test_meditate_quote_too_low_auto_quote_enabled_low_mayer(self, mock_mayer):
+    def test_meditate_quote_too_low_auto_quote_enabled_low_mayer_from_remote(self, mock_mayer, read_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = True
 
@@ -129,7 +130,7 @@ class BalancerTest(unittest.TestCase):
 
         self.assertIsNone(action)
 
-    @patch('balancer.fetch_mayer', return_value={'current': 1.60})
+    @patch('balancer.read_mayer', return_value=6250)
     def test_meditate_quote_too_high_auto_quote_enabled_high_mayer(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = True
@@ -140,7 +141,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(3.75, action['percentage'])
         self.assertEqual(10000, action['price'])
 
-    @patch('balancer.fetch_mayer', return_value={'current': 5.60})
+    @patch('balancer.read_mayer', return_value=1785.7142857)
     def test_meditate_quote_too_high_auto_quote_enabled_very_high_mayer(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = True
