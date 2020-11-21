@@ -198,11 +198,17 @@ def append_mayer(part: dict):
 
 
 def calculate_mayer(price: float):
+    average = read_mayer()
+    if average:
+        return {'current': price/average}
+    return None
+
+
+def read_mayer():
     mayer_file = "mayer.avg"
     if mayer_file and os.path.isfile(mayer_file):
         with open("mayer.avg", "rt") as file:
-            average = float(file.read())
-            return {'current': price/average}
+            return float(file.read())
     return None
 
 
