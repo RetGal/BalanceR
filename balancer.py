@@ -38,7 +38,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.2.0'
+            self.bot_version = '0.2.1'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -748,26 +748,27 @@ def get_closed_order():
         return get_closed_order()
 
 
-def get_current_price(attempts: int = 0, limit: int = None):
+def get_current_price(pair: str = None, attempts: int = 0, limit: int = None):
     """
     Fetches the current BTC/USD exchange rate
     In case of failure, the function calls itself again until success
     :return: int current market price
     """
+    pair = CONF.pair if None else pair
     try:
-        price = EXCHANGE.fetch_ticker(CONF.pair)['bid']
+        price = EXCHANGE.fetch_ticker(pair)['bid']
         if not price:
             LOG.warning('Price was None')
             sleep_for(1, 2)
-            return get_current_price(attempts, limit)
-        return int(price)
+            return get_current_price(pair, attempts, limit)
+        return float(price)
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.info('Got an error %s %s, retrying in 5 seconds...', type(error).__name__, str(error.args))
         attempts += 1
         if not limit or attempts < limit:
             sleep_for(4, 6)
-            return get_current_price(attempts, limit)
+            return get_current_price(pair, attempts, limit)
     return 0
 
 
@@ -1204,7 +1205,7 @@ def do_post_trade_action():
 def meditate(quote: float, price: float):
     action = {}
     if CONF.auto_quote:
-        mm = calculate_mayer(price)
+        mm = calculate_mayer(get_current_price('BTC/USD', 0, 3))
         if mm is None:
             mm = fetch_mayer()
             if mm is None:
