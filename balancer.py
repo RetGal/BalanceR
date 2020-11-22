@@ -1202,10 +1202,18 @@ def do_post_trade_action():
         trade_report()
 
 
+def get_btcusd_pair():
+    if CONF.pair != 'BTC/USD':
+        if CONF.exchange != 'kraken':
+            return 'BTC/USD'
+        return 'XBT/USD'
+    return None
+
 def meditate(quote: float, price: float):
     action = {}
     if CONF.auto_quote:
-        mm = calculate_mayer(get_current_price('BTC/USD', 0, 3))
+        pair = get_btcusd_pair()
+        mm = calculate_mayer(get_current_price(pair, 0, 3))
         if mm is None:
             mm = fetch_mayer()
             if mm is None:
