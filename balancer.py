@@ -754,7 +754,7 @@ def get_current_price(pair: str = None, attempts: int = 0, limit: int = None):
     In case of failure, the function calls itself again until success
     :return: int current market price
     """
-    pair = CONF.pair if None else pair
+    pair = CONF.pair if not pair else pair
     try:
         price = EXCHANGE.fetch_ticker(pair)['bid']
         if not price:
@@ -1202,18 +1202,17 @@ def do_post_trade_action():
         trade_report()
 
 
-def get_btcusd_pair():
-    if CONF.pair != 'BTC/USD':
-        if CONF.exchange != 'kraken':
-            return 'BTC/USD'
-        return 'XBT/USD'
-    return None
+def get_btc_usd_pair():
+    if CONF.exchange == 'binance':
+        return 'BTC/USDT'
+    return 'BTC/USD'
+
 
 def meditate(quote: float, price: float):
     action = {}
     if CONF.auto_quote:
-        pair = get_btcusd_pair()
-        mm = calculate_mayer(get_current_price(pair, 0, 3))
+        btc_usd = get_btc_usd_pair()
+        mm = calculate_mayer(get_current_price(btc_usd, 0, 3))
         if mm is None:
             mm = fetch_mayer()
             if mm is None:
