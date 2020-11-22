@@ -110,12 +110,11 @@ def get_average():
     :return: The average price
     """
     today = datetime.datetime.utcnow().date()
-    dd_days_ago = today - datetime.timedelta(days=200)
-    yesterday = today - datetime.timedelta(days=1)
+    dd_days_ago = today - datetime.timedelta(days=199)
     conn = sqlite3.connect(CONF.db_name, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
     curs = conn.cursor()
     try:
-        return curs.execute("SELECT AVG(price) FROM rates WHERE date BETWEEN '{}' AND '{}'".format(dd_days_ago, yesterday)).fetchone()
+        return curs.execute("SELECT AVG(price) FROM rates WHERE date BETWEEN '{}' AND '{}'".format(dd_days_ago, today)).fetchone()
     finally:
         curs.close()
         conn.close()
@@ -190,9 +189,8 @@ def update_rates():
 
 
 def update_average():
-    delete_oldest()
     avg = get_average()[0]
-    LOG.info(avg)
+    LOG.info("-- NEW AVG {}".format(avg))
     write_average_file(avg)
     sleep(60)
 
@@ -215,6 +213,7 @@ if __name__ == "__main__":
         NOW = datetime.datetime.utcnow()
         if NOW.minute == 1:
             update_rates()
+            update_average()
             if NOW.hour == 0:
-                update_average()
+                delete_oldest()
         sleep(55)
