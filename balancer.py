@@ -30,15 +30,15 @@ STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price', 'nvalid arg']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
-
 class ExchangeConfig:
     def __init__(self):
+        self.mm_quotes = ['OFF', 'MM', 'MMRange']
         config = configparser.ConfigParser()
         config.read(INSTANCE + ".txt")
 
         try:
             props = config['config']
-            self.bot_version = '0.2.1'
+            self.bot_version = '0.3.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -46,7 +46,10 @@ class ExchangeConfig:
             self.pair = str(props['pair']).strip('"')
             self.symbol = str(props['symbol']).strip('"')
             self.crypto_quote_in_percent = abs(float(props['crypto_quote_in_percent']))
-            self.auto_quote = bool(str(props['auto_quote']).strip('"').lower() == 'true')
+            self.auto_quote = str(props['auto_quote']).strip('"')
+            self.mm_quote_0 = abs(float(props['mm_quote_0']))
+            self.mm_quote_100 = abs(float(props['mm_quote_100']))
+            self.tolerance_in_percent = abs(float(props['tolerance_in_percent']))
             self.tolerance_in_percent = abs(float(props['tolerance_in_percent']))
             self.period_in_minutes = abs(float(props['period_in_minutes']))
             self.daily_report = bool(str(props['daily_report']).strip('"').lower() == 'true')
@@ -57,6 +60,9 @@ class ExchangeConfig:
             currency = self.pair.split("/")
             self.base = currency[0]
             self.quote = currency[1]
+            if self.auto_quote not in self.mm_quotes:
+                raise SystemExit("Invalid value for auto_quote: '{}' possible values are: {}"
+                                 .format(self.auto_quote, self.mm_quotes))
             self.period_in_seconds = self.period_in_minutes * 60
             self.satoshi_factor = 0.00000001
             self.recipient_addresses = str(props['recipient_addresses']).strip('"').replace(' ', '').split(",")
@@ -1210,21 +1216,10 @@ def get_btc_usd_pair():
 
 def meditate(quote: float, price: float):
     action = {}
-    if CONF.auto_quote:
-        btc_usd = get_btc_usd_pair()
-        mm = calculate_mayer(get_current_price(btc_usd, 0, 3))
-        if mm is None:
-            mm = fetch_mayer()
-            if mm is None:
-                return None
-        target_quote = CONF.crypto_quote_in_percent / mm['current']
-        if target_quote < 10:
-            target_quote = 10
-        elif target_quote > 90:
-            target_quote = 90
-        LOG.info('Auto quote %.2f @ %.2f', target_quote, mm['current'])
-    else:
+    if CONF.auto_quote == 'OFF':
         target_quote = CONF.crypto_quote_in_percent
+    else:
+        target_quote = calculate_target_quote()
     if quote < target_quote - CONF.tolerance_in_percent:
         action['direction'] = 'BUY'
         action['percentage'] = target_quote - quote
@@ -1236,6 +1231,26 @@ def meditate(quote: float, price: float):
         action['price'] = price
         return action
     return None
+
+
+def calculate_target_quote():
+    btc_usd = get_btc_usd_pair()
+    mm = calculate_mayer(get_current_price(btc_usd, 0, 3))
+    if mm is None:
+        mm = fetch_mayer()
+        if mm is None:
+            return None
+    if CONF.auto_quote == 'MM':
+        target_quote = CONF.crypto_quote_in_percent / mm['current']
+    elif CONF.auto_quote == 'MMRange':
+        divisor = (mm['current'] - CONF.mm_quote_100) / (CONF.mm_quote_0 - CONF.mm_quote_100)
+        target_quote = 100 / divisor if divisor > 0 else 100
+    if target_quote < 0:
+        target_quote = 0
+    elif target_quote > 100:
+        target_quote = 100
+    LOG.info('Auto quote %.2f @ %.2f', target_quote, mm['current'])
+    return target_quote
 
 
 def calculate_quote():
