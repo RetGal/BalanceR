@@ -91,7 +91,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(15, action['percentage'])
         self.assertEqual(10000, action['price'])
 
-    @patch('balancer.read_mayer', return_value=10000)
+    @patch('balancer.read_daily_average', return_value=10000)
     @patch('balancer.get_current_price', return_value=10000)
     def test_meditate_quote_too_low_auto_quote_enabled(self, mock_current_price, mock_mayer):
         balancer.CONF = self.create_default_conf()
@@ -103,7 +103,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(15, action['percentage'])
         self.assertEqual(10000, action['price'])
 
-    @patch('balancer.read_mayer', return_value=None)
+    @patch('balancer.read_daily_average', return_value=None)
     @patch('balancer.fetch_mayer', return_value={'current': 0.5})
     def test_meditate_quote_too_low_auto_quote_enabled_low_mayer_from_remote(self, mock_mayer, read_mayer):
         balancer.CONF = self.create_default_conf()
@@ -131,7 +131,7 @@ class BalancerTest(unittest.TestCase):
 
         self.assertIsNone(action)
 
-    @patch('balancer.read_mayer', return_value=6250)
+    @patch('balancer.read_daily_average', return_value=6250)
     @patch('balancer.get_current_price', return_value=10000)
     def test_meditate_quote_too_high_auto_quote_enabled_high_mayer(self, mock_current_price, mock_mayer):
         balancer.CONF = self.create_default_conf()
@@ -143,7 +143,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(3.75, action['percentage'])
         self.assertEqual(10000, action['price'])
 
-    @patch('balancer.read_mayer', return_value=1800)
+    @patch('balancer.read_daily_average', return_value=1800)
     @patch('balancer.get_current_price', return_value=10000)
     def test_meditate_quote_high_auto_quote_enabled_very_high_mayer(self, mock_current_price, mock_mayer):
         balancer.CONF = self.create_default_conf()
@@ -155,9 +155,26 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(26, action['percentage'])
         self.assertEqual(10000, action['price'])
 
-    @patch('balancer.read_mayer', return_value=1000)
+    @patch('balancer.read_daily_average', return_value=1000)
     @patch('balancer.get_current_price', return_value=10000)
-    def test_calculate_target_quote_mm_very_high_mayer(self, mock_current_price, mock_mayer):
+    def test_calculate_mayer_high(self, mock_current_price, mock_read_daily_average):
+        balancer.CONF = self.create_default_conf()
+
+        mm = balancer.get_mayer()
+
+        self.assertEqual(10, mm['current'])
+
+    @patch('balancer.read_daily_average', return_value=6666)
+    @patch('balancer.get_current_price', return_value=9999)
+    def test_calculate_mayer_average(self, mock_current_price, mock_read_daily_average):
+        balancer.CONF = self.create_default_conf()
+
+        mm = balancer.get_mayer()
+
+        self.assertEqual(1.5, mm['current'])
+
+    @patch('balancer.get_mayer', return_value={'current': 10})
+    def test_calculate_target_quote_mm_very_high_mayer(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = 'MM'
 
@@ -165,19 +182,17 @@ class BalancerTest(unittest.TestCase):
 
         self.assertEqual(5, target_quote)
 
-    @patch('balancer.read_mayer', return_value=6666)
-    @patch('balancer.get_current_price', return_value=9999)
-    def test_calculate_target_quote_mm_average_mayer(self, mock_current_price, mock_mayer):
+    @patch('balancer.get_mayer', return_value={'current': 1.5})
+    def test_calculate_target_quote_mm_average_mayer(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = 'MM'
 
         target_quote = balancer.calculate_target_quote()
 
-        self.assertAlmostEqual(33.33334, target_quote, 4)
+        self.assertAlmostEqual(33.333, target_quote, 3)
 
-    @patch('balancer.read_mayer', return_value=20000)
-    @patch('balancer.get_current_price', return_value=10000)
-    def test_calculate_target_quote_mm_very_low_mayer(self, mock_current_price, mock_mayer):
+    @patch('balancer.get_mayer', return_value={'current': 0.5})
+    def test_calculate_target_quote_mm_very_low_mayer(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = 'MM'
 
@@ -185,45 +200,82 @@ class BalancerTest(unittest.TestCase):
 
         self.assertEqual(100, target_quote)
 
-    @patch('balancer.read_mayer', return_value=1000)
-    @patch('balancer.get_current_price', return_value=10000)
-    def test_calculate_target_quote_mmrange_very_high_mayer(self, mock_current_price, mock_mayer):
+    @patch('balancer.get_mayer', return_value={'current': 3})
+    def test_calculate_target_quote_mmrange_high_mayer(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.mm_quote_0 = 2
+        balancer.CONF.mm_quote_100 = 1.2
 
         target_quote = balancer.calculate_target_quote()
 
-        self.assertAlmostEqual(9.47368, target_quote, 4)
+        self.assertEqual(0, target_quote)
 
-    @patch('balancer.read_mayer', return_value=4000)
-    @patch('balancer.get_current_price', return_value=12000)
-    def test_calculate_target_quote_mmrange_high_mayer(self, mock_current_price, mock_mayer):
+    @patch('balancer.get_mayer', return_value={'current': 1.5})
+    def test_calculate_target_quote_mmrange_average_mayer(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.mm_quote_0 = 2
+        balancer.CONF.mm_quote_100 = 1.2
 
         target_quote = balancer.calculate_target_quote()
 
-        self.assertAlmostEqual(35.99999, target_quote, 4)
+        self.assertEqual(62.5, target_quote)
 
-    @patch('balancer.read_mayer', return_value=6666)
-    @patch('balancer.get_current_price', return_value=9999)
-    def test_calculate_target_quote_mmrange_average_mayer(self, mock_current_price, mock_mayer):
+    @patch('balancer.get_mayer', return_value={'current': 1.5})
+    def test_calculate_target_quote_mmrange_average_mayer_alternative_conf1(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = 'MMRange'
-
-        target_quote = balancer.calculate_target_quote()
-
-        self.assertEqual(90, target_quote)
-
-    @patch('balancer.read_mayer', return_value=20000)
-    @patch('balancer.get_current_price', return_value=10000)
-    def test_calculate_target_quote_mmrange_very_low_mayer(self, mock_current_price, mock_mayer):
-        balancer.CONF = self.create_default_conf()
-        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.mm_quote_0 = 2.6
+        balancer.CONF.mm_quote_100 = 1.6
 
         target_quote = balancer.calculate_target_quote()
 
         self.assertEqual(100, target_quote)
+
+    @patch('balancer.get_mayer', return_value={'current': 1.5})
+    def test_calculate_target_quote_mmrange_average_mayer_alternative_conf2(self, mock_mayer):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.mm_quote_0 = 1.6
+        balancer.CONF.mm_quote_100 = 0.8
+
+        target_quote = balancer.calculate_target_quote()
+
+        self.assertAlmostEqual(13, target_quote, 0)
+
+    @patch('balancer.get_mayer', return_value={'current': 0.9})
+    def test_calculate_target_quote_mmrange_low_mayer(self, mock_mayer):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.mm_quote_0 = 2
+        balancer.CONF.mm_quote_100 = 1.2
+
+        target_quote = balancer.calculate_target_quote()
+
+        self.assertEqual(100, target_quote)
+
+    @patch('balancer.get_mayer', return_value={'current': 0.9})
+    def test_calculate_target_quote_mmrange_low_mayer_alternative_conf1(self, mock_mayer):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.mm_quote_0 = 2.6
+        balancer.CONF.mm_quote_100 = 1.6
+
+        target_quote = balancer.calculate_target_quote()
+
+        self.assertEqual(100, target_quote)
+
+    @patch('balancer.get_mayer', return_value={'current': 0.9})
+    def test_calculate_target_quote_mmrange_low_mayer_alternative_conf3(self, mock_mayer):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.mm_quote_0 = 1.2
+        balancer.CONF.mm_quote_100 = 0.4
+
+        target_quote = balancer.calculate_target_quote()
+
+        self.assertAlmostEqual(37.5, target_quote, 1)
 
     @patch('balancer.logging')
     def test_calculate_quote_very_low(self, mock_logger):
@@ -664,8 +716,8 @@ class BalancerTest(unittest.TestCase):
         conf.trade_advantage_in_percent = 0.02
         conf.crypto_quote_in_percent = 50
         conf.auto_quote = 'OFF'
-        conf.mm_quote_0 = 1.4
-        conf.mm_quote_100 = 0.5
+        conf.mm_quote_0 = 2
+        conf.mm_quote_100 = 1.2
         conf.tolerance_in_percent = 2
         conf.period_in_minutes = 10
         conf.daily_report = False

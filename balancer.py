@@ -30,6 +30,7 @@ STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price', 'nvalid arg']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
+
 class ExchangeConfig:
     def __init__(self):
         self.mm_quotes = ['OFF', 'MM', 'MMRange']
@@ -38,7 +39,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.3.0'
+            self.bot_version = '0.3.1'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -203,14 +204,22 @@ def append_mayer(part: dict):
     part['csv'].append("Mayer multiple:;{:.2f}".format(mayer['current']))
 
 
+def get_mayer():
+    btc_usd = get_btc_usd_pair()
+    mayer = calculate_mayer(get_current_price(btc_usd, 0, 3))
+    if mayer is None:
+        mayer = fetch_mayer()
+    return mayer
+
+
 def calculate_mayer(price: float):
-    average = read_mayer()
+    average = read_daily_average()
     if average:
         return {'current': price/average}
     return None
 
 
-def read_mayer():
+def read_daily_average():
     mayer_file = "mayer.avg"
     if mayer_file and os.path.isfile(mayer_file):
         with open("mayer.avg", "rt") as file:
@@ -284,7 +293,9 @@ def create_mail_content(daily: bool = False):
 
 def create_report_part_settings():
     return {'mail': ["Quote {} in %: {:>19}".format(CONF.base, CONF.crypto_quote_in_percent),
-                     "Auto-Quote: {:>23}".format(str('Y' if CONF.auto_quote is True else 'N')),
+                     "Auto-Quote: {:>23}".format(CONF.auto_quote),
+                     "MM Quote 0: {:>23}".format(CONF.mm_quote_0),
+                     "MM Quote 100: {:>23}".format(CONF.mm_quote_100),
                      "Tolerance in %: {:>19}".format(CONF.tolerance_in_percent),
                      "Period in minutes: {:>16}".format(CONF.period_in_minutes),
                      "Daily report: {:>21}".format(str('Y' if CONF.daily_report is True else 'N')),
@@ -293,7 +304,9 @@ def create_report_part_settings():
                      "Order adjust seconds: {:>13}".format(CONF.order_adjust_seconds),
                      "Trade advantage in %: {:>13}".format(CONF.trade_advantage_in_percent)],
             'csv': ["Quote {} in %:;{}".format(CONF.base, CONF.crypto_quote_in_percent),
-                    "Auto-Quote:;{}".format(str('Y' if CONF.auto_quote is True else 'N')),
+                    "Auto-Quote:;{}".format(CONF.auto_quote),
+                    "MM Quote 0:;{}".format(CONF.mm_quote_0),
+                    "MM Quote 100:;{}".format(CONF.mm_quote_100),
                     "Tolerance in %:;{}".format(CONF.tolerance_in_percent),
                     "Period in minutes:;{}".format(CONF.period_in_minutes),
                     "Daily report:;{}".format(str('Y' if CONF.daily_report is True else 'N')),
@@ -324,9 +337,8 @@ def create_report_part_performance(daily: bool):
     net_deposits = get_net_deposits()
     sleep_for(0, 1)
     append_performance(part, margin_balance['total'], net_deposits)
-    wallet_balance = get_wallet_balance()
     sleep_for(0, 1)
-    append_balances(part, margin_balance, margin_balance_of_fiat, wallet_balance, daily)
+    append_balances(part, margin_balance, margin_balance_of_fiat, daily)
     return part
 
 
@@ -392,16 +404,11 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
             part['csv'].append("Overall performance in {}:;{:.4f};% n/a".format(CONF.base, absolute_performance))
 
 
-def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: dict, wallet_balance: float, daily: bool):
+def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: dict, daily: bool):
     """
     Appends liquidation price, wallet balance, margin balance (including stats), used margin and leverage information
     """
-    if wallet_balance is None:
-        part['mail'].append("Wallet balance {}: {:>15}".format(CONF.base, 'n/a'))
-        part['csv'].append("Wallet balance {}:;n/a".format(CONF.base))
-    else:
-        part['mail'].append("Wallet balance {}: {:>18.4f}".format(CONF.base, wallet_balance))
-        part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
+    append_wallet_balance(part)
     price = get_current_price()
     stats = load_statistics()
     if CONF.exchange == 'bitmex':
@@ -414,7 +421,10 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         fiat_total = fb['total'] if fb else 0
         today = calculate_daily_statistics(crypto_total, fiat_total, price, stats, daily)
         append_balance_change(part, today)
-    yesterday = stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
+    if not stats:
+        yesterday = None
+    else:
+        yesterday = stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
     append_value_change(part, today, yesterday, price)
     append_trading_result(part, today, yesterday, price)
     append_price_change(part, today, price)
@@ -429,6 +439,16 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         used_balance = 'n/a'
     part['mail'].append("Position {}: {:>22.2f}".format(CONF.quote, used_balance))
     part['csv'].append("Position {}:;{:.2}".format(CONF.quote, used_balance))
+
+
+def append_wallet_balance(part: dict):
+    wallet_balance = get_wallet_balance()
+    if wallet_balance is None:
+        part['mail'].append("Wallet balance {}: {:>15}".format(CONF.base, 'n/a'))
+        part['csv'].append("Wallet balance {}:;n/a".format(CONF.base))
+    else:
+        part['mail'].append("Wallet balance {}: {:>18.4f}".format(CONF.base, wallet_balance))
+        part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
 
 
 def append_margin_change(part: dict, today: dict):
@@ -1234,22 +1254,16 @@ def meditate(quote: float, price: float):
 
 
 def calculate_target_quote():
-    btc_usd = get_btc_usd_pair()
-    mm = calculate_mayer(get_current_price(btc_usd, 0, 3))
-    if mm is None:
-        mm = fetch_mayer()
-        if mm is None:
-            return None
+    mayer = get_mayer()
     if CONF.auto_quote == 'MM':
-        target_quote = CONF.crypto_quote_in_percent / mm['current']
+        target_quote = CONF.crypto_quote_in_percent / mayer['current']
     elif CONF.auto_quote == 'MMRange':
-        divisor = (mm['current'] - CONF.mm_quote_100) / (CONF.mm_quote_0 - CONF.mm_quote_100)
-        target_quote = 100 / divisor if divisor > 0 else 100
+        target_quote = 100 * (mayer['current'] - CONF.mm_quote_0) / (CONF.mm_quote_100 - CONF.mm_quote_0)
     if target_quote < 0:
         target_quote = 0
     elif target_quote > 100:
         target_quote = 100
-    LOG.info('Auto quote %.2f @ %.2f', target_quote, mm['current'])
+    LOG.info('Auto quote %.2f @ %.2f', target_quote, mayer['current'])
     return target_quote
 
 
