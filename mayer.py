@@ -165,7 +165,7 @@ def calculate_daily_average(current: [tuple], price: float):
 
 
 def write_control_file():
-    with open(INSTANCE + '.pid', 'w') as file:
+    with open(INSTANCE + '.mid', 'w') as file:
         file.write(str(os.getpid()) + ' ' + INSTANCE)
 
 
