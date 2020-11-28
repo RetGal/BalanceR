@@ -1290,6 +1290,7 @@ def calculate_balances():
             balance['cryptoBalance'] = (abs(pos['foreignNotional']) / pos['avgEntryPrice'] * balance['price']) / pos['avgEntryPrice']
         return balance
     balance['cryptoBalance'] = get_crypto_balance()['total']
+    sleep_for(3, 5)
     fiat_balance = get_fiat_balance()['total']
     balance['price'] = get_current_price()
     balance['totalBalanceInCrypto'] = balance['cryptoBalance'] + (fiat_balance / balance['price'])
