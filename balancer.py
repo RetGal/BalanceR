@@ -836,12 +836,12 @@ def do_buy(quote: float, reference_price: float, attempt: int):
         order_size = calculate_buy_order_size(quote, reference_price, buy_price)
         if order_size is None:
             LOG.info("Buy order size below minimum")
-            sleep_for(20, 30)
+            sleep_for(30, 50)
             return None
         order = create_buy_order(buy_price, order_size)
         if order is None:
             LOG.warning("Could not create buy order over %s", order_size)
-            sleep_for(20, 30)
+            sleep_for(30, 50)
             return None
         sleep(CONF.order_adjust_seconds)
         order_status = fetch_order_status(order.id)
@@ -892,12 +892,12 @@ def do_sell(quote: float, reference_price: float, attempt: int):
         order_size = calculate_sell_order_size(quote, reference_price, sell_price)
         if order_size is None:
             LOG.info("Sell order size below minimum")
-            sleep_for(20, 30)
+            sleep_for(30, 50)
             return None
         order = create_sell_order(sell_price, order_size)
         if order is None:
             LOG.warning("Could not create sell order over %s", order_size)
-            sleep_for(20, 30)
+            sleep_for(30, 50)
             return None
         sleep(CONF.order_adjust_seconds)
         order_status = fetch_order_status(order.id)
