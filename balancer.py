@@ -64,7 +64,7 @@ class ExchangeConfig:
             if self.auto_quote not in self.mm_quotes:
                 raise SystemExit("Invalid value for auto_quote: '{}' possible values are: {}"
                                  .format(self.auto_quote, self.mm_quotes))
-            self.period_in_seconds = self.period_in_minutes * 60
+            self.period_in_seconds = round(self.period_in_minutes * 60)
             self.satoshi_factor = 0.00000001
             self.recipient_addresses = str(props['recipient_addresses']).strip('"').replace(' ', '').split(",")
             self.sender_address = str(props['sender_address']).strip('"')
@@ -157,7 +157,7 @@ def function_logger(console_level: int, log_file: str, file_level: int = None):
 
     if file_level:
         fh = RotatingFileHandler("{}.log".format(log_file), mode='a', maxBytes=5 * 1024 * 1024, backupCount=4,
-                                 encoding=None, delay=0)
+                                 encoding=None, delay=False)
         fh.setLevel(file_level)
         fh.setFormatter(logging.Formatter('%(asctime)s - %(lineno)4d - %(levelname)-8s - %(message)s'))
         logger.addHandler(fh)
@@ -284,9 +284,12 @@ def create_mail_content(daily: bool = False):
         text += '\n'.join(performance) + '\n'.join(advice) + '\n'.join(settings) + '\n'.join(general) + CONF.info \
                 + '\n\n' + CONF.url + '\n'
 
-    csv = None if not daily else INSTANCE + ';' + str(datetime.datetime.utcnow().replace(microsecond=0)) + ' UTC;' + \
-                                 (';'.join(performance_part['csv']) + ';' + ';'.join(advice_part['csv']) + ';' +
-                                  ';'.join(settings_part['csv']) + ';' + CONF.info + '\n')
+    csv = None if not daily else "{};{} UTC;{};{};{};{}\n".format(INSTANCE,
+                                                                  datetime.datetime.utcnow().replace(microsecond=0),
+                                                                  ';'.join(performance_part['csv']),
+                                                                  ';'.join(advice_part['csv']),
+                                                                  ';'.join(settings_part['csv']),
+                                                                  CONF.info)
 
     return {'text': text, 'csv': csv}
 
@@ -295,7 +298,7 @@ def create_report_part_settings():
     return {'mail': ["Quote {} in %: {:>19}".format(CONF.base, CONF.crypto_quote_in_percent),
                      "Auto-Quote: {:>23}".format(CONF.auto_quote),
                      "MM Quote 0: {:>23}".format(CONF.mm_quote_0),
-                     "MM Quote 100: {:>23}".format(CONF.mm_quote_100),
+                     "MM Quote 100: {:>21}".format(CONF.mm_quote_100),
                      "Tolerance in %: {:>19}".format(CONF.tolerance_in_percent),
                      "Period in minutes: {:>16}".format(CONF.period_in_minutes),
                      "Daily report: {:>21}".format(str('Y' if CONF.daily_report is True else 'N')),
@@ -1157,7 +1160,6 @@ def get_balance(currency: str):
                 bal['free'] = 0
             return bal
 
-        # TODO check
         result = EXCHANGE.private_get_trading_accounts()
         if result:
             for acc in result:
