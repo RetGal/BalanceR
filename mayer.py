@@ -4,10 +4,11 @@ import datetime
 import inspect
 import logging
 import os
+import random
 import sqlite3
 import sys
+import time
 from logging.handlers import RotatingFileHandler
-from time import sleep
 
 import ccxt
 
@@ -20,8 +21,6 @@ class ExchangeConfig:
         try:
             props = dict(config.items('config'))
             self.exchange = str(props['exchange']).strip('"').lower()
-            self.api_key = str(props['api_key']).strip('"')
-            self.api_secret = str(props['api_secret']).strip('"')
             self.db_name = str(props['db_name']).strip('"')
         except (configparser.NoSectionError, KeyError):
             raise SystemExit('Invalid configuration for ' + INSTANCE)
@@ -56,8 +55,6 @@ def connect_to_exchange():
 
     return exchanges[CONF.exchange]({
         'enableRateLimit': True,
-        'apiKey': CONF.api_key,
-        'secret': CONF.api_secret,
         # 'verbose': True,
     })
 
@@ -77,7 +74,7 @@ def get_current_price(tries: int = 0):
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.debug('Got an error %s %s, retrying in 10 seconds...', type(error).__name__, str(error.args))
-        sleep(10)
+        sleep_for(10, 12)
         get_current_price(tries + 1)
 
 
@@ -185,14 +182,22 @@ def update_rates():
     if rate is None:
         rate = get_last_rate()[0]
     persist_rate(rate)
-    sleep(60)
+    sleep_for(60)
 
 
 def update_average():
     avg = get_average()[0]
-    LOG.info("-- NEW AVG {}".format(avg))
+    LOG.info("-- NEW AVG %s", avg)
     write_average_file(avg)
-    sleep(60)
+    sleep_for(60)
+
+
+def sleep_for(greater: int, less: int = None):
+    if less:
+        seconds = round(random.uniform(greater, less), 3)
+    else:
+        seconds = greater
+    time.sleep(seconds)
 
 
 if __name__ == "__main__":
@@ -216,4 +221,4 @@ if __name__ == "__main__":
             update_average()
             if NOW.hour == 0:
                 delete_oldest()
-        sleep(55)
+        sleep_for(55)
