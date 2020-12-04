@@ -726,6 +726,7 @@ def get_wallet_balance(price: float):
                         fiat = float(bal['balance'])
                 if fiat > 0:
                     return crypto + (fiat/price)
+                return crypto
         else:
             LOG.error("get_wallet_balance() is not implemented for %s", CONF.exchange)
         return None
