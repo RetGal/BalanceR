@@ -39,7 +39,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.3.2'
+            self.bot_version = '0.3.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
