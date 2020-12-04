@@ -411,8 +411,8 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     """
     Appends liquidation price, wallet balance, margin balance (including stats), used margin and leverage information
     """
-    append_wallet_balance(part)
     price = get_current_price()
+    append_wallet_balance(part, price)
     stats = load_statistics()
     if CONF.exchange == 'bitmex':
         today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, stats, daily)
@@ -444,8 +444,8 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     part['csv'].append("Position {}:;{:.2}".format(CONF.quote, used_balance))
 
 
-def append_wallet_balance(part: dict):
-    wallet_balance = get_wallet_balance()
+def append_wallet_balance(part: dict, price: float):
+    wallet_balance = get_wallet_balance(price)
     if wallet_balance is None:
         part['mail'].append("Wallet balance {}: {:>15}".format(CONF.base, 'n/a'))
         part['csv'].append("Wallet balance {}:;n/a".format(CONF.base))
@@ -706,7 +706,7 @@ def get_net_deposits():
         return get_net_deposits()
 
 
-def get_wallet_balance():
+def get_wallet_balance(price: float):
     """
     Fetch the wallet balance in crypto
     """
@@ -721,7 +721,11 @@ def get_wallet_balance():
             if result:
                 for bal in result:
                     if bal['currency'] == CONF.base:
-                        return float(bal['balance'])
+                        crypto = float(bal['balance'])
+                    elif bal['currency'] == CONF.quote:
+                        fiat = float(bal['balance'])
+                if fiat > 0:
+                    return crypto + (fiat/price)
         else:
             LOG.error("get_wallet_balance() is not implemented for %s", CONF.exchange)
         return None
@@ -729,7 +733,7 @@ def get_wallet_balance():
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        return get_wallet_balance()
+        return get_wallet_balance(price)
 
 
 def get_open_orders():
