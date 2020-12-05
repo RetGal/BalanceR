@@ -13,7 +13,6 @@ Sollen mehrere *BalanceR* Instanzen auf demselben Server betrieben werden, so wi
 
 `apt install tmux`
 
-
 ## Inbetriebnahme
 ### Bot Instanzen
 Vor dem erstmaligen Start ist die Konfigurationsdatei *config.txt* mit den gewünschten API Keys und Einstellungen zu ergänzen.
@@ -67,4 +66,13 @@ Damit *mayer_osiris.sh* die *Mayer*  Instanz kontinuierlich überwachen kann, mu
 
 Die beiden Dateien *mayer.py* und *mayer_osiris.sh* müssen vor dem ersten Start mittels `chmod +x` ausführbar gemacht werden.
 
+## Troubleshooting
 
+Jede Instanz erstellt und schreibt in eine eigene Logdatei. Diese heisst so wie die entsprechende Konfigurationsdatei, beindet sich im `log` Verzeichnis endet aber auf *.log*:
+
+`test1.log`
+
+Fehlt diese Datei, dann konnte *balancer.py* nicht gestartet werden.
+Die nächste Anlaufstelle wäre die entsprechende *tmux* Session:
+
+`tmux a -t test1`
