@@ -10,6 +10,7 @@ pair = "BTC/USD"
 symbol = "XBTUSD"
 
 # bot properties
+net_deposits_in_base_currency = 0
 crypto_quote_in_percent = 50
 # OFF, MM, MMRange
 auto_quote = "OFF"

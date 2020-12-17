@@ -39,13 +39,14 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.3.3'
+            self.bot_version = '0.3.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
             self.test = bool(str(props['test']).strip('"').lower() == 'true')
             self.pair = str(props['pair']).strip('"')
             self.symbol = str(props['symbol']).strip('"')
+            self.net_deposits_in_base_currency = abs(float(props['net_deposits_in_base_currency']))
             self.crypto_quote_in_percent = abs(float(props['crypto_quote_in_percent']))
             self.auto_quote = str(props['auto_quote']).strip('"')
             self.mm_quote_0 = abs(float(props['mm_quote_0']))
@@ -683,6 +684,8 @@ def get_net_deposits():
     Get deposits and withdraws to calculate the net deposits in crypto.
     return: net deposits
     """
+    if CONF.net_deposits_in_base_currency:
+        return CONF.net_deposits_in_base_currency
     try:
         currency = CONF.base if CONF.base != 'BTC' else 'XBt'
         if CONF.exchange == 'bitmex':

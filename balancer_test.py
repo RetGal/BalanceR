@@ -698,6 +698,36 @@ class BalancerTest(unittest.TestCase):
 
         self.assertEqual(balancer.CONF.base + ' price ' + balancer.CONF.quote + ':;100.00;+0.21%', part['csv'][0])
 
+    @patch('ccxt.kraken')
+    def test_get_net_deposits(self, mock_kraken):
+        balancer.CONF = self.create_default_conf()
+        balancer.EXCHANGE = mock_kraken
+
+        balancer.get_net_deposits()
+
+        mock_kraken.fetch_deposits.assert_called_with('BTC')
+
+    @patch('ccxt.bitmex')
+    def test_get_net_deposits_bitmex(self, mock_bitmex):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.EXCHANGE = mock_bitmex
+
+        balancer.get_net_deposits()
+
+        mock_bitmex.private_get_user_wallet.assert_called_with({'currency': 'XBt'})
+
+    @patch('ccxt.kraken')
+    def test_get_net_deposits_from_config(self, mock_kraken):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.net_deposits_in_base_currency = 0.1
+        balancer.EXCHANGE = mock_kraken
+
+        net_deposit = balancer.get_net_deposits()
+
+        mock_kraken.fetch_deposits.assert_not_called()
+        self.assertEqual(balancer.CONF.net_deposits_in_base_currency, net_deposit)
+
     @staticmethod
     def create_default_conf():
         conf = balancer.ExchangeConfig
@@ -707,6 +737,7 @@ class BalancerTest(unittest.TestCase):
         conf.test = True
         conf.pair = 'BTC/EUR'
         conf.symbol = 'XBTEUR'
+        conf.net_deposits_in_base_currency = 0
         conf.base = 'BTC'
         conf.quote = 'EUR'
         conf.satoshi_factor = 0.00000001
