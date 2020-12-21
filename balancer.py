@@ -28,6 +28,7 @@ EMAIL_ONLY = False
 KEEP_ORDERS = False
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price', 'nvalid arg']
+ACCOUNT_ERRORS = ['account has been disabled', 'key is disabled', 'authentication failed', 'permission denied']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
 
@@ -39,7 +40,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.3.4'
+            self.bot_version = '0.3.5'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -629,6 +630,7 @@ def get_margin_balance():
         return bal
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_margin_balance()
@@ -653,6 +655,7 @@ def get_margin_balance_of_fiat():
         return bal
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_margin_balance_of_fiat()
@@ -674,6 +677,7 @@ def get_margin_leverage():
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_margin_leverage()
@@ -704,6 +708,7 @@ def get_net_deposits():
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_net_deposits()
@@ -735,6 +740,7 @@ def get_wallet_balance(price: float):
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_wallet_balance(price)
@@ -760,6 +766,7 @@ def get_open_orders():
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_open_orders()
@@ -780,6 +787,7 @@ def get_closed_order():
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_closed_order()
@@ -967,6 +975,7 @@ def fetch_order_status(order_id: str):
         return EXCHANGE.fetch_order_status(order_id)
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return fetch_order_status(order_id)
@@ -997,6 +1006,7 @@ def cancel_order(order: Order):
         LOG.error('Order to be canceled not found %s %s', str(order), str(error.args))
         return
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         cancel_order(order)
@@ -1030,6 +1040,7 @@ def create_sell_order(price: float, amount_crypto: float):
             else:
                 LOG.warning(not_selling, amount_crypto)
             return None
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return create_sell_order(price, amount_crypto)
@@ -1065,6 +1076,7 @@ def create_buy_order(price: float, amount_crypto: float):
             else:
                 LOG.warning(not_buying, amount_crypto)
             return None
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return create_buy_order(price, amount_crypto)
@@ -1089,6 +1101,7 @@ def create_market_sell_order(amount_crypto: float):
         if any(e in str(error.args) for e in STOP_ERRORS):
             LOG.warning('Order submission not possible - not selling %s', amount_crypto)
             return None
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return create_market_sell_order(amount_crypto)
@@ -1115,6 +1128,7 @@ def create_market_buy_order(amount_crypto: float):
         if any(e in str(error.args) for e in STOP_ERRORS):
             LOG.warning('Order submission not possible - not buying %s', amount_crypto)
             return None
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return create_market_buy_order(amount_crypto)
@@ -1137,6 +1151,7 @@ def get_used_balance():
         return float(get_crypto_balance()['used'] * get_current_price())
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_used_balance()
@@ -1189,6 +1204,7 @@ def get_balance(currency: str):
         return {'used': 0, 'free': 0, 'total': 0}
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_balance(currency)
@@ -1205,6 +1221,7 @@ def get_position_info():
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_position_info()
@@ -1223,6 +1240,7 @@ def set_leverage(new_leverage: float):
         if any(e in str(error.args) for e in STOP_ERRORS):
             LOG.warning('Insufficient available balance - not setting leverage to %s', new_leverage)
             return None
+        handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return set_leverage(new_leverage)
@@ -1307,6 +1325,20 @@ def calculate_balances():
     return balance
 
 
+def handle_account_errors(error_message: str):
+    if any(e in error_message.lower() for e in ACCOUNT_ERRORS):
+        LOG.error(error_message)
+        deactivate_bot(error_message)
+
+
+def deactivate_bot(message: str):
+    os.remove(INSTANCE + '.pid')
+    text = "Deactivated RB {}".format(INSTANCE)
+    LOG.error(text)
+    send_mail(text, message)
+    exit(0)
+
+
 if __name__ == '__main__':
     print('Starting BalanceR Bot')
     print('ccxt version:', ccxt.__version__)
@@ -1321,7 +1353,7 @@ if __name__ == '__main__':
     else:
         INSTANCE = os.path.basename(input('Filename with API Keys (config): ') or 'config')
 
-    LOG_FILENAME = 'log' + os.path.sep + INSTANCE
+    LOG_FILENAME = 'log{}{}'.format(os.path.sep, INSTANCE)
     if not os.path.exists('log'):
         os.makedirs('log')
 

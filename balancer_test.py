@@ -728,6 +728,40 @@ class BalancerTest(unittest.TestCase):
         mock_kraken.fetch_deposits.assert_not_called()
         self.assertEqual(balancer.CONF.net_deposits_in_base_currency, net_deposit)
 
+    @patch('balancer.logging')
+    @patch('balancer.deactivate_bot')
+    def test_handle_account_errors_miss(self, mock_deactivate_bot, mock_logging):
+        balancer.LOG = mock_logging
+
+        balancer.handle_account_errors('error')
+
+        mock_logging.error.assert_not_called()
+        mock_deactivate_bot.assert_not_called()
+
+    @patch('balancer.logging')
+    @patch('balancer.deactivate_bot')
+    def test_handle_account_errors_match(self, mock_deactivate_bot, mock_logging):
+        balancer.LOG = mock_logging
+
+        balancer.handle_account_errors('account has been disabled')
+
+        mock_logging.error.assert_called()
+        mock_deactivate_bot.assert_called()
+
+    @patch('balancer.logging')
+    @patch('balancer.send_mail')
+    @patch('os.remove')
+    def test_deactivate_bot(self, mock_os_remove, mock_send_mail, mock_logging):
+        balancer.LOG = mock_logging
+        balancer.INSTANCE = 'test'
+        message = 'bang!'
+
+        with self.assertRaises(SystemExit):
+            balancer.deactivate_bot(message)
+
+        mock_logging.error.assert_called()
+        mock_send_mail.assert_called_with('Deactivated RB ' + balancer.INSTANCE, message)
+
     @staticmethod
     def create_default_conf():
         conf = balancer.ExchangeConfig
