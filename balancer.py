@@ -35,7 +35,7 @@ RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 class ExchangeConfig:
     def __init__(self):
         self.mm_quotes = ['OFF', 'MM', 'MMRange']
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(interpolation=None)
         config.read(INSTANCE + ".txt")
 
         try:
