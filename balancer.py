@@ -40,7 +40,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.3.5'
+            self.bot_version = '0.3.6'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1309,6 +1309,11 @@ def calculate_balances():
     balance = {'cryptoBalance': 0, 'totalBalanceInCrypto': 0, 'price': 0}
     if CONF.exchange == 'bitmex':
         pos = get_position_info()
+        if pos['homeNotional'] and pos['homeNotional'] < 0:
+            LOG.warning('Position short by %f', abs(pos['homeNotional']))
+            create_market_buy_order(abs(pos['homeNotional']))
+            sleep_for(2, 4)
+            pos = get_position_info()
         # aka margin balance
         balance['totalBalanceInCrypto'] = get_crypto_balance()['total']
         balance['price'] = pos['lastPrice']
