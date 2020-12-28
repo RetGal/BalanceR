@@ -40,7 +40,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.3.6'
+            self.bot_version = '0.3.7'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -649,7 +649,9 @@ def get_margin_balance_of_fiat():
             bal['used'] = float(bal['m'])
         elif CONF.exchange == 'bitmex':
             pos = get_position_info()
-            bal = {'total': pos['homeNotional'] * pos['lastPrice']}
+            if not pos['lastPrice']:
+                return {'total': 0}
+            return {'total': pos['homeNotional'] * pos['lastPrice']}
         else:
             bal = get_fiat_balance()
         return bal
