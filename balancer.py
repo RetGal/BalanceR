@@ -40,7 +40,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.3.7'
+            self.bot_version = '0.3.8'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -199,10 +199,12 @@ def append_mayer(part: dict):
         part['mail'].append("Mayer multiple: {:>19} (n/a)".format(advice))
         part['csv'].append("Mayer multiple:;n/a")
         return
-    if advice != 'HOLD':
+    if advice == 'HOLD':
+        part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], 2.4, advice))
+    else if advice == 'BUY':
         part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], mayer['average'], advice))
     else:
-        part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], 2.4, advice))
+        part['mail'].append("Mayer multiple: {:>19.2f} (> {:.2f} = {})".format(mayer['current'], 2.4, advice))
     part['csv'].append("Mayer multiple:;{:.2f}".format(mayer['current']))
 
 
@@ -514,7 +516,7 @@ def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
     if yesterday and 'mBal' in today and 'fmBal' in today:
         yesterday_total_in_fiat = yesterday['mBal'] * yesterday['price'] + yesterday['fmBal']
         today_total_in_fiat = today['mBal'] * price + today['fmBal']
-        change = "{:+.2f}".format((today_total_in_fiat / yesterday_total_in_fiat - 1) * 100)
+        change = "{:+.2f}".format((today_total_in_fiat / yesterday_total_in_fiat - 1) * 100) if yesterday_total_in_fial > 0 else "% n/a"
     else:
         change = "% n/a"
     part['mail'].append("Value change: {:>22}%*".format(change))
@@ -567,8 +569,9 @@ def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats:
 
     before_24h = stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
     if before_24h:
-        today['mBalChan24'] = round((today['mBal'] / before_24h['mBal'] - 1) * 100, 2)
-        if 'fmBal' in before_24h:
+        if 'mBal' in before_24h and before_24h['mBal'] and before_24h['mBal'] > 0:
+            today['mBalChan24'] = round((today['mBal'] / before_24h['mBal'] - 1) * 100, 2)
+        if 'fmBal' in before_24h and before_24h['fmBal'] and before_24h['fmBal'] > 0:
             today['fmBalChan24'] = round((today['fmBal'] / before_24h['fmBal'] - 1) * 100, 2)
         if 'price' in before_24h:
             today['priceChan24'] = round((today['price'] / before_24h['price'] - 1) * 100, 2)
