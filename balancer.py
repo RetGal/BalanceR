@@ -201,7 +201,7 @@ def append_mayer(part: dict):
         return
     if advice == 'HOLD':
         part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], 2.4, advice))
-    else if advice == 'BUY':
+    elif advice == 'BUY':
         part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], mayer['average'], advice))
     else:
         part['mail'].append("Mayer multiple: {:>19.2f} (> {:.2f} = {})".format(mayer['current'], 2.4, advice))
