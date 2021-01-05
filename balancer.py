@@ -516,7 +516,7 @@ def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
     if yesterday and 'mBal' in today and 'fmBal' in today:
         yesterday_total_in_fiat = yesterday['mBal'] * yesterday['price'] + yesterday['fmBal']
         today_total_in_fiat = today['mBal'] * price + today['fmBal']
-        change = "{:+.2f}".format((today_total_in_fiat / yesterday_total_in_fiat - 1) * 100) if yesterday_total_in_fial > 0 else "% n/a"
+        change = "{:+.2f}".format((today_total_in_fiat / yesterday_total_in_fiat - 1) * 100) if yesterday_total_in_fiat > 0 else "% n/a"
     else:
         change = "% n/a"
     part['mail'].append("Value change: {:>22}%*".format(change))
