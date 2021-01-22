@@ -40,7 +40,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.3.9'
+            self.bot_version = '0.4.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -446,6 +446,13 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         used_balance = 'n/a'
     part['mail'].append("Position {}: {:>22.2f}".format(CONF.quote, used_balance))
     part['csv'].append("Position {}:;{:.2}".format(CONF.quote, used_balance))
+    if CONF.exchange == 'bitmex':
+        sleep_for(1, 2)
+        poi = get_position_info()
+    if poi is not None and 'liquidationPrice' in poi:
+        part['mail'].append("Liquidation price {}: {:>13.2f}".format(CONF.quote, poi['liquidationPrice']))
+    else:
+        part['mail'].append("Liquidation price {}: {:>13}".format(CONF.quote, 'n/a'))
 
 
 def append_wallet_balance(part: dict, price: float):
