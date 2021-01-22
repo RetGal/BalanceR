@@ -446,6 +446,7 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         used_balance = 'n/a'
     part['mail'].append("Position {}: {:>22.2f}".format(CONF.quote, used_balance))
     part['csv'].append("Position {}:;{:.2}".format(CONF.quote, used_balance))
+    poi = None
     if CONF.exchange == 'bitmex':
         sleep_for(1, 2)
         poi = get_position_info()
