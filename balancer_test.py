@@ -91,6 +91,14 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(15, action['percentage'])
         self.assertEqual(10000, action['price'])
 
+    def test_meditate_quote_too_low_stop_buy_enabled(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.stop_buy = True
+
+        action = balancer.meditate(35, 10000)
+
+        self.assertIsNone(action)
+
     @patch('balancer.read_daily_average', return_value=10000)
     @patch('balancer.get_current_price', return_value=10000)
     def test_meditate_quote_too_low_auto_quote_enabled(self, mock_current_price, mock_mayer):
@@ -779,6 +787,7 @@ class BalancerTest(unittest.TestCase):
         conf.trade_trials = 5
         conf.order_adjust_seconds = 90
         conf.trade_advantage_in_percent = 0.02
+        conf.stop_buy = False
         conf.crypto_quote_in_percent = 50
         conf.auto_quote = 'OFF'
         conf.mm_quote_0 = 2

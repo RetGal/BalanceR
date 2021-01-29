@@ -40,7 +40,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.4.0'
+            self.bot_version = '0.5.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -60,6 +60,7 @@ class ExchangeConfig:
             self.trade_trials = abs(int(props['trade_trials']))
             self.order_adjust_seconds = abs(int(props['order_adjust_seconds']))
             self.trade_advantage_in_percent = float(props['trade_advantage_in_percent'])
+            self.stop_buy = bool(str(props['stop_buy']).strip('"').lower() == 'true')
             currency = self.pair.split("/")
             self.base = currency[0]
             self.quote = currency[1]
@@ -309,7 +310,8 @@ def create_report_part_settings():
                      "Trade report: {:>21}".format(str('Y' if CONF.trade_report is True else 'N')),
                      "Trade trials: {:>21}".format(CONF.trade_trials),
                      "Order adjust seconds: {:>13}".format(CONF.order_adjust_seconds),
-                     "Trade advantage in %: {:>13}".format(CONF.trade_advantage_in_percent)],
+                     "Trade advantage in %: {:>13}".format(CONF.trade_advantage_in_percent),
+                     "Stop buy: {:>25}".format(str('Y' if CONF.stop_buy is True else 'N'))],
             'csv': ["Quote {} in %:;{}".format(CONF.base, CONF.crypto_quote_in_percent),
                     "Auto-Quote:;{}".format(CONF.auto_quote),
                     "MM Quote 0:;{}".format(CONF.mm_quote_0),
@@ -320,7 +322,8 @@ def create_report_part_settings():
                     "Trade report:;{}".format(str('Y' if CONF.trade_report is True else 'N')),
                     "Trade trials:;{}".format(CONF.trade_trials),
                     "Order adjust seconds:;{}".format(CONF.order_adjust_seconds),
-                    "Trade advantage in %:;{}".format(CONF.trade_advantage_in_percent)]}
+                    "Trade advantage in %:;{}".format(CONF.trade_advantage_in_percent),
+                    "Stop buy:;{}".format(str('Y' if CONF.stop_buy is True else 'N'))]}
 
 
 def create_mail_part_general():
@@ -1291,7 +1294,7 @@ def meditate(quote: float, price: float):
         target_quote = CONF.crypto_quote_in_percent
     else:
         target_quote = calculate_target_quote()
-    if quote < target_quote - CONF.tolerance_in_percent:
+    if not CONF.stop_buy and quote < target_quote - CONF.tolerance_in_percent:
         action['direction'] = 'BUY'
         action['percentage'] = target_quote - quote
         action['price'] = price
