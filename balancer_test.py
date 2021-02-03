@@ -706,6 +706,25 @@ class BalancerTest(unittest.TestCase):
 
         self.assertEqual(balancer.CONF.base + ' price ' + balancer.CONF.quote + ':;100.00;+0.21%', part['csv'][0])
 
+    def test_append_liquidation_price_kraken(self):
+        balancer.CONF = self.create_default_conf()
+        part = {'mail': [], 'csv': []}
+
+        balancer.append_liquidation_price(part)
+
+        self.assertEqual('Liquidation price EUR:;n/a', part['csv'][0])
+
+    @patch('balancer.get_position_info', return_value={'liquidationPrice': 10000})
+    def test_append_liquidation_price_bitmex(self, mock_position_info):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.quote = 'USD'
+        part = {'mail': [], 'csv': []}
+
+        balancer.append_liquidation_price(part)
+
+        self.assertEqual('Liquidation price USD:;10000.00', part['csv'][0])
+
     @patch('ccxt.kraken')
     def test_get_net_deposits(self, mock_kraken):
         balancer.CONF = self.create_default_conf()

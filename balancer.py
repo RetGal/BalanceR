@@ -40,7 +40,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.5.0'
+            self.bot_version = '0.5.1'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -76,7 +76,7 @@ class ExchangeConfig:
             self.info = str(props['info']).strip('"')
             self.url = 'https://bitcoin-schweiz.ch/bot/'
         except (configparser.NoSectionError, KeyError):
-            raise SystemExit('Invalid configuration for ' + INSTANCE)
+            raise SystemExit('Invalid configuration for ' + INSTANCE) from KeyError
 
 
 class Order:
@@ -416,7 +416,7 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
 
 def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: dict, daily: bool):
     """
-    Appends liquidation price, wallet balance, margin balance (including stats), used margin and leverage information
+    Appends wallet balance, margin balance (including stats), used margin and leverage information, liquidation price
     """
     price = get_current_price()
     append_wallet_balance(part, price)
@@ -448,15 +448,8 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     if used_balance is None:
         used_balance = 'n/a'
     part['mail'].append("Position {}: {:>22.2f}".format(CONF.quote, used_balance))
-    part['csv'].append("Position {}:;{:.2}".format(CONF.quote, used_balance))
-    poi = None
-    if CONF.exchange == 'bitmex':
-        sleep_for(1, 2)
-        poi = get_position_info()
-    if poi is not None and 'liquidationPrice' in poi:
-        part['mail'].append("Liquidation price {}: {:>13.2f}".format(CONF.quote, poi['liquidationPrice']))
-    else:
-        part['mail'].append("Liquidation price {}: {:>13}".format(CONF.quote, 'n/a'))
+    part['csv'].append("Position {}:;{:.2f}".format(CONF.quote, used_balance))
+    append_liquidation_price(part)
 
 
 def append_wallet_balance(part: dict, price: float):
@@ -467,6 +460,19 @@ def append_wallet_balance(part: dict, price: float):
     else:
         part['mail'].append("Wallet balance {}: {:>18.4f}".format(CONF.base, wallet_balance))
         part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
+
+
+def append_liquidation_price(part: dict):
+    poi = None
+    if CONF.exchange == 'bitmex':
+        sleep_for(1, 2)
+        poi = get_position_info()
+    if poi is not None and 'liquidationPrice' in poi:
+        part['mail'].append("Liquidation price {}: {:>13.2f}".format(CONF.quote, poi['liquidationPrice']))
+        part['csv'].append("Liquidation price {}:;{:.2f}".format(CONF.quote, poi['liquidationPrice']))
+    else:
+        part['mail'].append("Liquidation price {}: {:>13}".format(CONF.quote, 'n/a'))
+        part['csv'].append("Liquidation price {}:;{}".format(CONF.quote, 'n/a'))
 
 
 def append_margin_change(part: dict, today: dict):
@@ -1363,7 +1369,7 @@ def deactivate_bot(message: str):
     text = "Deactivated RB {}".format(INSTANCE)
     LOG.error(text)
     send_mail(text, message)
-    exit(0)
+    sys.exit(0)
 
 
 if __name__ == '__main__':
