@@ -40,7 +40,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.5.1'
+            self.bot_version = '0.5.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -467,7 +467,7 @@ def append_liquidation_price(part: dict):
     if CONF.exchange == 'bitmex':
         sleep_for(1, 2)
         poi = get_position_info()
-    if poi is not None and 'liquidationPrice' in poi:
+    if poi is not None and 'liquidationPrice' in poi and poi['liquidationPrice'] is not None:
         part['mail'].append("Liquidation price {}: {:>13.2f}".format(CONF.quote, poi['liquidationPrice']))
         part['csv'].append("Liquidation price {}:;{:.2f}".format(CONF.quote, poi['liquidationPrice']))
     else:
