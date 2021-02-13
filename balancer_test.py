@@ -113,14 +113,46 @@ class BalancerTest(unittest.TestCase):
 
     @patch('balancer.read_daily_average', return_value=None)
     @patch('balancer.fetch_mayer', return_value={'current': 0.5})
-    def test_meditate_quote_too_low_auto_quote_enabled_low_mayer_from_remote(self, mock_mayer, read_mayer):
+    def test_meditate_quote_too_low_auto_quote_enabled_low_mayer_from_remote_high_max_crypto_quote(self, mock_mayer, read_mayer):
         balancer.CONF = self.create_default_conf()
+        balancer.CONF.max_crypto_quote_in_percent = 100
         balancer.CONF.auto_quote = 'MM'
 
         action = balancer.meditate(40, 10000)
 
         self.assertEqual('BUY', action['direction'])
         self.assertEqual(60, action['percentage'])
+        self.assertEqual(10000, action['price'])
+
+    @patch('balancer.logging')
+    @patch('balancer.read_daily_average', return_value=None)
+    @patch('balancer.fetch_mayer', return_value={'current': 0.5})
+    def test_meditate_quote_too_low_auto_quote_enabled_low_mayer_from_remote_limited_by_default_max_crypto_quote(self, mock_mayer, read_mayer, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = 'MM'
+
+        action = balancer.meditate(50, 10000)
+
+        mock_logger.info.assert_called_with('Auto quote limited by configuration to %.2f', balancer.CONF.max_crypto_quote_in_percent)
+        self.assertEqual('BUY', action['direction'])
+        self.assertEqual(30, action['percentage'])
+        self.assertEqual(10000, action['price'])
+
+    @patch('balancer.logging')
+    @patch('balancer.read_daily_average', return_value=None)
+    @patch('balancer.fetch_mayer', return_value={'current': 0.5})
+    def test_meditate_quote_too_low_auto_quote_enabled_low_mayer_from_remote_low_max_crypto_quote(self, mock_mayer, read_mayer, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.max_crypto_quote_in_percent = 60
+        balancer.CONF.auto_quote = 'MM'
+
+        action = balancer.meditate(50, 10000)
+
+        mock_logger.info.assert_called_with('Auto quote limited by configuration to %.2f', balancer.CONF.max_crypto_quote_in_percent)
+        self.assertEqual('BUY', action['direction'])
+        self.assertEqual(10, action['percentage'])
         self.assertEqual(10000, action['price'])
 
     def test_meditate_quote_too_high(self):
@@ -163,6 +195,28 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(26, action['percentage'])
         self.assertEqual(10000, action['price'])
 
+    @patch('balancer.calculate_target_quote', return_value=65)
+    def test_meditate_quote_too_low_but_above_max_crypto_quote(self, mock_calculate_target_quote):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.max_crypto_quote_in_percent = 65
+
+        action = balancer.meditate(66, 10000)
+
+        self.assertIsNone(action)
+
+    @patch('balancer.calculate_target_quote', return_value=68)
+    def test_meditate_quote_too_low_and_below_max_crypto_quote(self, mock_calculate_target_quote):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.max_crypto_quote_in_percent = 70
+
+        action = balancer.meditate(65, 10000)
+
+        self.assertEqual('BUY', action['direction'])
+        self.assertEqual(3, action['percentage'])
+        self.assertEqual(10000, action['price'])
+
     @patch('balancer.read_daily_average', return_value=1000)
     @patch('balancer.get_current_price', return_value=10000)
     def test_calculate_mayer_high(self, mock_current_price, mock_read_daily_average):
@@ -199,13 +253,42 @@ class BalancerTest(unittest.TestCase):
 
         self.assertAlmostEqual(33.333, target_quote, 3)
 
+    @patch('balancer.logging')
     @patch('balancer.get_mayer', return_value={'current': 0.5})
-    def test_calculate_target_quote_mm_very_low_mayer(self, mock_mayer):
+    def test_calculate_target_quote_mm_very_low_mayer_low_max_quote(self, mock_mayer, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.max_crypto_quote_in_percent = 66
+        balancer.CONF.auto_quote = 'MM'
+
+        target_quote = balancer.calculate_target_quote()
+
+        mock_logger.info.assert_called_with('Auto quote limited by configuration to %.2f', balancer.CONF.max_crypto_quote_in_percent)
+        self.assertEqual(66, target_quote)
+
+    @patch('balancer.logging')
+    @patch('balancer.get_mayer', return_value={'current': 0.5})
+    def test_calculate_target_quote_mm_very_low_mayer_default_max_quote(self, mock_mayer, mock_logger):
+        balancer.LOG = mock_logger
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = 'MM'
 
         target_quote = balancer.calculate_target_quote()
 
+        mock_logger.info.assert_called_with('Auto quote limited by configuration to %.2f', balancer.CONF.max_crypto_quote_in_percent)
+        self.assertEqual(80, target_quote)
+
+    @patch('balancer.logging')
+    @patch('balancer.get_mayer', return_value={'current': 0.5})
+    def test_calculate_target_quote_mm_very_low_mayer_high_max_quote(self, mock_mayer, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.max_crypto_quote_in_percent = 100
+        balancer.CONF.auto_quote = 'MM'
+
+        target_quote = balancer.calculate_target_quote()
+
+        mock_logger.info.assert_called_with('Auto quote %.2f @ %.2f', target_quote, 0.5)
         self.assertEqual(100, target_quote)
 
     @patch('balancer.get_mayer', return_value={'current': 3})
@@ -236,6 +319,7 @@ class BalancerTest(unittest.TestCase):
         balancer.CONF.auto_quote = 'MMRange'
         balancer.CONF.mm_quote_0 = 2.6
         balancer.CONF.mm_quote_100 = 1.6
+        balancer.CONF.max_crypto_quote_in_percent = 100
 
         target_quote = balancer.calculate_target_quote()
 
@@ -253,7 +337,7 @@ class BalancerTest(unittest.TestCase):
         self.assertAlmostEqual(13, target_quote, 0)
 
     @patch('balancer.get_mayer', return_value={'current': 0.9})
-    def test_calculate_target_quote_mmrange_low_mayer(self, mock_mayer):
+    def test_calculate_target_quote_mmrange_low_mayer_limited_by_default_max_crypto_quote(self, mock_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.auto_quote = 'MMRange'
         balancer.CONF.mm_quote_0 = 2
@@ -261,7 +345,7 @@ class BalancerTest(unittest.TestCase):
 
         target_quote = balancer.calculate_target_quote()
 
-        self.assertEqual(100, target_quote)
+        self.assertEqual(80, target_quote)
 
     @patch('balancer.get_mayer', return_value={'current': 0.9})
     def test_calculate_target_quote_mmrange_low_mayer_alternative_conf1(self, mock_mayer):
@@ -269,6 +353,7 @@ class BalancerTest(unittest.TestCase):
         balancer.CONF.auto_quote = 'MMRange'
         balancer.CONF.mm_quote_0 = 2.6
         balancer.CONF.mm_quote_100 = 1.6
+        balancer.CONF.max_crypto_quote_in_percent = 100
 
         target_quote = balancer.calculate_target_quote()
 
@@ -328,18 +413,6 @@ class BalancerTest(unittest.TestCase):
         quote = balancer.calculate_quote()
 
         self.assertAlmostEqual(99, quote, 2)
-
-    def test_calculate_used_margin_percentage(self):
-        percentage = balancer.calculate_used_margin_percentage({'total': 100, 'free': 49})
-
-        self.assertEqual(51, percentage)
-
-    @patch('balancer.get_margin_balance', return_value={'total': 0})
-    def test_calculate_used_margin_percentage_without_provided_balance(self, mock_get_margin_balance):
-        percentage = balancer.calculate_used_margin_percentage()
-
-        mock_get_margin_balance.assert_called()
-        self.assertEqual(0, percentage)
 
     def test_stats_add_same_again_day(self):
         today = {'mBal': 0.999, 'price': 10000}
@@ -807,6 +880,7 @@ class BalancerTest(unittest.TestCase):
         conf.order_adjust_seconds = 90
         conf.trade_advantage_in_percent = 0.02
         conf.stop_buy = False
+        conf.max_crypto_quote_in_percent = 80
         conf.crypto_quote_in_percent = 50
         conf.auto_quote = 'OFF'
         conf.mm_quote_0 = 2

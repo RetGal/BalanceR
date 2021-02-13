@@ -40,7 +40,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.5.2'
+            self.bot_version = '0.6.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -53,7 +53,6 @@ class ExchangeConfig:
             self.mm_quote_0 = abs(float(props['mm_quote_0']))
             self.mm_quote_100 = abs(float(props['mm_quote_100']))
             self.tolerance_in_percent = abs(float(props['tolerance_in_percent']))
-            self.tolerance_in_percent = abs(float(props['tolerance_in_percent']))
             self.period_in_minutes = abs(float(props['period_in_minutes']))
             self.daily_report = bool(str(props['daily_report']).strip('"').lower() == 'true')
             self.trade_report = bool(str(props['trade_report']).strip('"').lower() == 'true')
@@ -61,6 +60,7 @@ class ExchangeConfig:
             self.order_adjust_seconds = abs(int(props['order_adjust_seconds']))
             self.trade_advantage_in_percent = float(props['trade_advantage_in_percent'])
             self.stop_buy = bool(str(props['stop_buy']).strip('"').lower() == 'true')
+            self.max_crypto_quote_in_percent = abs(float(props['max_crypto_quote_in_percent']))
             currency = self.pair.split("/")
             self.base = currency[0]
             self.quote = currency[1]
@@ -312,6 +312,8 @@ def create_report_part_settings():
     part['csv'].append("MM Quote 0:;{}".format(CONF.mm_quote_0))
     part['mail'].append("MM Quote 100: {:>23}".format(CONF.mm_quote_100))
     part['csv'].append("MM Quote 100:;{}".format(CONF.mm_quote_100))
+    part['mail'].append("Max quote {} in %: {:>15}".format(CONF.base, CONF.max_crypto_quote_in_percent))
+    part['csv'].append("Max quote {} in %:;{}".format(CONF.base, CONF.max_crypto_quote_in_percent))
     part['mail'].append("Tolerance in %: {:>19}".format(CONF.tolerance_in_percent))
     part['csv'].append("Tolerance in %:;{}".format(CONF.tolerance_in_percent))
     part['mail'].append("Period in minutes: {:>16}".format(CONF.period_in_minutes))
@@ -443,9 +445,6 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     append_value_change(part, today, yesterday, price)
     append_trading_result(part, today, yesterday, price)
     append_price_change(part, today, price)
-    used_margin = calculate_used_margin_percentage(margin_balance)
-    part['mail'].append("Used margin: {:>23.2f}%".format(used_margin))
-    part['csv'].append("Used margin:;{:.2f}%".format(used_margin))
     actual_quote = calculate_quote()
     part['mail'].append("Actual quote: {:>22.2f}%".format(actual_quote))
     part['csv'].append("Actual quote:;{:.2f}%".format(actual_quote))
@@ -618,17 +617,6 @@ def persist_statistics(stats: Stats):
     stats_file = INSTANCE + '.pkl'
     with open(stats_file, "wb") as file:
         pickle.dump(stats, file)
-
-
-def calculate_used_margin_percentage(bal=None):
-    """
-    Calculates the used margin percentage
-    """
-    if bal is None:
-        bal = get_margin_balance()
-        if bal['total'] <= 0:
-            return 0
-    return float(100 - (bal['free'] / bal['total']) * 100)
 
 
 def write_csv(content: str, filename_csv: str):
@@ -1305,7 +1293,7 @@ def meditate(quote: float, price: float):
         target_quote = CONF.crypto_quote_in_percent
     else:
         target_quote = calculate_target_quote()
-    if not CONF.stop_buy and quote < target_quote - CONF.tolerance_in_percent:
+    if not CONF.stop_buy and quote < target_quote - CONF.tolerance_in_percent and quote < CONF.max_crypto_quote_in_percent:
         action['direction'] = 'BUY'
         action['percentage'] = target_quote - quote
         action['price'] = price
@@ -1329,6 +1317,9 @@ def calculate_target_quote():
     elif target_quote > 100:
         target_quote = 100
     LOG.info('Auto quote %.2f @ %.2f', target_quote, mayer['current'])
+    if target_quote > CONF.max_crypto_quote_in_percent:
+        LOG.info('Auto quote limited by configuration to %.2f', CONF.max_crypto_quote_in_percent)
+        return CONF.max_crypto_quote_in_percent
     return target_quote
 
 
