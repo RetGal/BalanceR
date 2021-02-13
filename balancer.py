@@ -300,30 +300,35 @@ def create_mail_content(daily: bool = False):
 
 
 def create_report_part_settings():
-    return {'mail': ["Quote {} in %: {:>19}".format(CONF.base, CONF.crypto_quote_in_percent),
-                     "Auto-Quote: {:>23}".format(CONF.auto_quote),
-                     "MM Quote 0: {:>23}".format(CONF.mm_quote_0),
-                     "MM Quote 100: {:>21}".format(CONF.mm_quote_100),
-                     "Tolerance in %: {:>19}".format(CONF.tolerance_in_percent),
-                     "Period in minutes: {:>16}".format(CONF.period_in_minutes),
-                     "Daily report: {:>21}".format(str('Y' if CONF.daily_report is True else 'N')),
-                     "Trade report: {:>21}".format(str('Y' if CONF.trade_report is True else 'N')),
-                     "Trade trials: {:>21}".format(CONF.trade_trials),
-                     "Order adjust seconds: {:>13}".format(CONF.order_adjust_seconds),
-                     "Trade advantage in %: {:>13}".format(CONF.trade_advantage_in_percent),
-                     "Stop buy: {:>25}".format(str('Y' if CONF.stop_buy is True else 'N'))],
-            'csv': ["Quote {} in %:;{}".format(CONF.base, CONF.crypto_quote_in_percent),
-                    "Auto-Quote:;{}".format(CONF.auto_quote),
-                    "MM Quote 0:;{}".format(CONF.mm_quote_0),
-                    "MM Quote 100:;{}".format(CONF.mm_quote_100),
-                    "Tolerance in %:;{}".format(CONF.tolerance_in_percent),
-                    "Period in minutes:;{}".format(CONF.period_in_minutes),
-                    "Daily report:;{}".format(str('Y' if CONF.daily_report is True else 'N')),
-                    "Trade report:;{}".format(str('Y' if CONF.trade_report is True else 'N')),
-                    "Trade trials:;{}".format(CONF.trade_trials),
-                    "Order adjust seconds:;{}".format(CONF.order_adjust_seconds),
-                    "Trade advantage in %:;{}".format(CONF.trade_advantage_in_percent),
-                    "Stop buy:;{}".format(str('Y' if CONF.stop_buy is True else 'N'))]}
+    part = {'mail': [], 'csv': []}
+    if CONF.auto_quote == 'MMRange':
+        part['csv'].append("Quote {} in %:;n/a".format(CONF.base))
+    else:
+        part['mail'].append("Quote {} in %: {:>19}".format(CONF.base, CONF.crypto_quote_in_percent))
+        part['csv'].append("Quote {} in %:;{}".format(CONF.base, CONF.crypto_quote_in_percent))
+    part['mail'].append("Auto-Quote: {:>23}".format(CONF.auto_quote))
+    part['csv'].append("Auto-Quote:;{}".format(CONF.auto_quote))
+    part['mail'].append("MM Quote 0: {:>23}".format(CONF.mm_quote_0))
+    part['csv'].append("MM Quote 0:;{}".format(CONF.mm_quote_0))
+    part['mail'].append("MM Quote 100: {:>23}".format(CONF.mm_quote_100))
+    part['csv'].append("MM Quote 100:;{}".format(CONF.mm_quote_100))
+    part['mail'].append("Tolerance in %: {:>19}".format(CONF.tolerance_in_percent))
+    part['csv'].append("Tolerance in %:;{}".format(CONF.tolerance_in_percent))
+    part['mail'].append("Period in minutes: {:>16}".format(CONF.period_in_minutes))
+    part['csv'].append("Period in minutes:;{}".format(CONF.period_in_minutes))
+    part['mail'].append("Daily report: {:>21}".format(str('Y' if CONF.daily_report is True else 'N')))
+    part['csv'].append("Daily report:;{}".format(str('Y' if CONF.daily_report is True else 'N')))
+    part['mail'].append("Trade report: {:>21}".format(str('Y' if CONF.trade_report is True else 'N')))
+    part['csv'].append("Trade report:;{}".format(str('Y' if CONF.trade_report is True else 'N')))
+    part['mail'].append("Trade trials: {:>21}".format(CONF.trade_trials))
+    part['csv'].append("Trade trials:;{}".format(CONF.trade_trials))
+    part['mail'].append("Order adjust seconds: {:>13}".format(CONF.order_adjust_seconds))
+    part['csv'].append("Order adjust seconds:;{}".format(CONF.order_adjust_seconds))
+    part['mail'].append("Trade advantage in %: {:>13}".format(CONF.trade_advantage_in_percent))
+    part['csv'].append("Trade advantage in %:;{}".format(CONF.trade_advantage_in_percent))
+    part['mail'].append("Stop buy: {:>25}".format(str('Y' if CONF.stop_buy is True else 'N')))
+    part['csv'].append("Stop buy:;{}".format(str('Y' if CONF.stop_buy is True else 'N')))
+    return part
 
 
 def create_mail_part_general():
