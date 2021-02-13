@@ -40,7 +40,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.6.0'
+            self.bot_version = '0.6.1'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -310,7 +310,7 @@ def create_report_part_settings():
     part['csv'].append("Auto-Quote:;{}".format(CONF.auto_quote))
     part['mail'].append("MM Quote 0: {:>23}".format(CONF.mm_quote_0))
     part['csv'].append("MM Quote 0:;{}".format(CONF.mm_quote_0))
-    part['mail'].append("MM Quote 100: {:>23}".format(CONF.mm_quote_100))
+    part['mail'].append("MM Quote 100: {:>21}".format(CONF.mm_quote_100))
     part['csv'].append("MM Quote 100:;{}".format(CONF.mm_quote_100))
     part['mail'].append("Max quote {} in %: {:>15}".format(CONF.base, CONF.max_crypto_quote_in_percent))
     part['csv'].append("Max quote {} in %:;{}".format(CONF.base, CONF.max_crypto_quote_in_percent))

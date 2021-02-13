@@ -16,6 +16,7 @@ crypto_quote_in_percent = 50
 auto_quote = "OFF"
 mm_quote_0 = 1.4
 mm_quote_100 = 0.5
+max_crypto_quote_in_percent = 80
 tolerance_in_percent = 2
 period_in_minutes = 10
 daily_report = True
@@ -24,7 +25,6 @@ trade_trials = 3
 order_adjust_seconds = 90
 trade_advantage_in_percent = 0.02
 stop_buy = False
-max_crypto_quote_in_percent = 80
 
 # email properties
 recipient_addresses = "recipient@example.com,another.recipient@example.com"

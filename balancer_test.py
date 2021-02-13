@@ -879,14 +879,14 @@ class BalancerTest(unittest.TestCase):
         conf.trade_trials = 5
         conf.order_adjust_seconds = 90
         conf.trade_advantage_in_percent = 0.02
-        conf.stop_buy = False
-        conf.max_crypto_quote_in_percent = 80
         conf.crypto_quote_in_percent = 50
         conf.auto_quote = 'OFF'
         conf.mm_quote_0 = 2
         conf.mm_quote_100 = 1.2
+        conf.max_crypto_quote_in_percent = 80
         conf.tolerance_in_percent = 2
         conf.period_in_minutes = 10
+        conf.stop_buy = False
         conf.daily_report = False
         conf.trade_report = False
         conf.info = ''
