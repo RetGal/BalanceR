@@ -738,7 +738,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.append_trading_result(part, today, yesterday, 10000)
 
-        self.assertEqual('Trading result in EUR:;+2.50', part['csv'][0])
+        self.assertEqual('Trading result in EUR:;+2', part['csv'][0])
 
     def test_append_trading_result_negative(self):
         balancer.CONF.quote = 'EUR'
@@ -748,7 +748,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.append_trading_result(part, today, yesterday, 10000)
 
-        self.assertEqual('Trading result in EUR:;-1.00', part['csv'][0])
+        self.assertEqual('Trading result in EUR:;-1', part['csv'][0])
 
     def test_append_trading_result_real_life_positive(self):
         balancer.CONF.quote = 'USD'
@@ -758,7 +758,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.append_trading_result(part, today, yesterday, 11222)
 
-        self.assertEqual('Trading result in USD:;+0.38', part['csv'][0])
+        self.assertEqual('Trading result in USD:;+0', part['csv'][0])
 
     def test_append_trading_result_real_life_negative(self):
         balancer.CONF.quote = 'EUR'
@@ -768,7 +768,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.append_trading_result(part, today, yesterday, 9061)
 
-        self.assertEqual('Trading result in EUR:;-4.22', part['csv'][0])
+        self.assertEqual('Trading result in EUR:;-4', part['csv'][0])
 
     def test_append_price_change(self):
         balancer.CONF = self.create_default_conf()
@@ -777,7 +777,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.append_price_change(part, today, 100)
 
-        self.assertEqual(balancer.CONF.base + ' price ' + balancer.CONF.quote + ':;100.00;+0.21%', part['csv'][0])
+        self.assertEqual(balancer.CONF.base + ' price ' + balancer.CONF.quote + ':;100;+0.21%', part['csv'][0])
 
     def test_append_liquidation_price_kraken(self):
         balancer.CONF = self.create_default_conf()
@@ -796,7 +796,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.append_liquidation_price(part)
 
-        self.assertEqual('Liquidation price USD:;10000.00', part['csv'][0])
+        self.assertEqual('Liquidation price USD:;10000', part['csv'][0])
 
     @patch('ccxt.kraken')
     def test_get_net_deposits(self, mock_kraken):
