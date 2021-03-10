@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import calendar
 import configparser
 import datetime
 import inspect
@@ -35,12 +36,13 @@ RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 class ExchangeConfig:
     def __init__(self):
         self.mm_quotes = ['OFF', 'MM', 'MMRange']
+        self.report_cadences = ['T', 'D', 'M', 'A']
         config = configparser.ConfigParser(interpolation=None)
         config.read(INSTANCE + ".txt")
 
         try:
             props = config['config']
-            self.bot_version = '0.6.2'
+            self.bot_version = '0.7.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -54,8 +56,7 @@ class ExchangeConfig:
             self.mm_quote_100 = abs(float(props['mm_quote_100']))
             self.tolerance_in_percent = abs(float(props['tolerance_in_percent']))
             self.period_in_minutes = abs(float(props['period_in_minutes']))
-            self.daily_report = bool(str(props['daily_report']).strip('"').lower() == 'true')
-            self.trade_report = bool(str(props['trade_report']).strip('"').lower() == 'true')
+            self.report = str(props['report']).strip('"')
             self.trade_trials = abs(int(props['trade_trials']))
             self.order_adjust_seconds = abs(int(props['order_adjust_seconds']))
             self.trade_advantage_in_percent = float(props['trade_advantage_in_percent'])
@@ -67,6 +68,9 @@ class ExchangeConfig:
             if self.auto_quote not in self.mm_quotes:
                 raise SystemExit("Invalid value for auto_quote: '{}' possible values are: {}"
                                  .format(self.auto_quote, self.mm_quotes))
+            if self.report not in self.report_cadences:
+                raise SystemExit("Invalid value for report: '{}' possible values are: {}"
+                                 .format(self.report, self.report_cadences))
             self.period_in_seconds = round(self.period_in_minutes * 60)
             self.satoshi_factor = 0.00000001
             self.recipient_addresses = str(props['recipient_addresses']).strip('"').replace(' ', '').split(",")
@@ -238,23 +242,35 @@ def daily_report(immediately: bool = False):
     """
     global EMAIL_SENT
 
-    if CONF.daily_report:
-        now = datetime.datetime.utcnow()
-        if immediately or datetime.datetime(2012, 1, 17, 12, 22).time() > now.time() \
-                > datetime.datetime(2012, 1, 17, 12, 1).time() and EMAIL_SENT != now.day:
-            subject = "Daily BalanceR report {}".format(INSTANCE)
-            content = create_mail_content(True)
-            filename_csv = INSTANCE + '.csv'
-            write_csv(content['csv'], filename_csv)
+    now = datetime.datetime.utcnow()
+    if immediately or datetime.datetime(2012, 1, 17, 12, 22).time() > now.time() \
+            > datetime.datetime(2012, 1, 17, 12, 1).time() and EMAIL_SENT != now.day:
+        content = create_mail_content(True)
+        filename_csv = INSTANCE + '.csv'
+        write_csv(content['csv'], filename_csv)
+        if immediately or is_due_date(datetime.date.today()):
+            cadence = "Daily" if CONF.report in ['T', 'D'] else "Monthly" if CONF.report == 'M' else 'Annual'
+            subject = "{} BalanceR report {}".format(cadence, INSTANCE)
             send_mail(subject, content['text'], filename_csv)
-            EMAIL_SENT = now.day
+        EMAIL_SENT = now.day
+
+
+def is_due_date(today: datetime.date):
+    if CONF.report in ['T', 'D']:
+        return True
+    if today.day == calendar.monthrange(today.year, today.month)[1]:
+        if CONF.report == 'M':
+            return True
+        if today.month == 12:
+            return True
+    return False
 
 
 def trade_report():
     """
     Creates a trade report email
     """
-    if CONF.trade_report:
+    if CONF.report == 'T':
         subject = "RB Trade report {}".format(INSTANCE)
         content = create_mail_content()
         send_mail(subject, content['text'])
@@ -318,10 +334,8 @@ def create_report_part_settings():
     part['csv'].append("Tolerance in %:;{}".format(CONF.tolerance_in_percent))
     part['mail'].append("Period in minutes: {:>16}".format(CONF.period_in_minutes))
     part['csv'].append("Period in minutes:;{}".format(CONF.period_in_minutes))
-    part['mail'].append("Daily report: {:>21}".format(str('Y' if CONF.daily_report is True else 'N')))
-    part['csv'].append("Daily report:;{}".format(str('Y' if CONF.daily_report is True else 'N')))
-    part['mail'].append("Trade report: {:>21}".format(str('Y' if CONF.trade_report is True else 'N')))
-    part['csv'].append("Trade report:;{}".format(str('Y' if CONF.trade_report is True else 'N')))
+    part['mail'].append("Report: {:>27}".format(CONF.report))
+    part['csv'].append("Report:;{}".format(CONF.report))
     part['mail'].append("Trade trials: {:>21}".format(CONF.trade_trials))
     part['csv'].append("Trade trials:;{}".format(CONF.trade_trials))
     part['mail'].append("Order adjust seconds: {:>13}".format(CONF.order_adjust_seconds))

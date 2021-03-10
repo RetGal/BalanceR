@@ -520,7 +520,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('BTC/USD', balancer.CONF.pair)
         self.assertEqual('BTC', balancer.CONF.base)
         self.assertEqual('USD', balancer.CONF.quote)
-        self.assertTrue(balancer.CONF.trade_report)
+        self.assertEqual('T', balancer.CONF.report)
         self.assertEqual(50, balancer.CONF.crypto_quote_in_percent)
         self.assertEqual('Test', balancer.CONF.info)
 
@@ -862,6 +862,40 @@ class BalancerTest(unittest.TestCase):
         mock_logging.error.assert_called()
         mock_send_mail.assert_called_with('Deactivated RB ' + balancer.INSTANCE, message)
 
+    def test_is_due_date(self):
+        balancer.CONF = self.create_default_conf()
+        day = datetime.date.replace(datetime.date.today(), 2020, 2, 28)
+        balancer.CONF.report = 'A'
+        self.assertFalse(balancer.is_due_date(day))
+        balancer.CONF.report = 'M'
+        self.assertFalse(balancer.is_due_date(day))
+        balancer.CONF.report = 'D'
+        self.assertTrue(balancer.is_due_date(day))
+        balancer.CONF.report = 'T'
+        self.assertTrue(balancer.is_due_date(day))
+
+        day = datetime.date.replace(datetime.date.today(), 2020, 2, 29)
+        balancer.CONF.report = 'A'
+        self.assertFalse(balancer.is_due_date(day))
+        balancer.CONF.report = 'M'
+        self.assertTrue(balancer.is_due_date(day))
+        balancer.CONF.report = 'D'
+        self.assertTrue(balancer.is_due_date(day))
+        balancer.CONF.report = 'T'
+        self.assertTrue(balancer.is_due_date(day))
+
+        day = datetime.date.replace(datetime.date.today(), 2020, 12, 31)
+        balancer.CONF.report = 'A'
+        self.assertTrue(balancer.is_due_date(day))
+        balancer.CONF.report = 'M'
+        self.assertTrue(balancer.is_due_date(day))
+        balancer.CONF.report = 'D'
+        self.assertTrue(balancer.is_due_date(day))
+        balancer.CONF.report = 'T'
+        self.assertTrue(balancer.is_due_date(day))
+
+
+
     @staticmethod
     def create_default_conf():
         conf = balancer.ExchangeConfig
@@ -887,8 +921,7 @@ class BalancerTest(unittest.TestCase):
         conf.tolerance_in_percent = 2
         conf.period_in_minutes = 10
         conf.stop_buy = False
-        conf.daily_report = False
-        conf.trade_report = False
+        conf.report = 'T'
         conf.info = ''
         conf.url = 'http://example.org'
         conf.mail_server = 'smtp.example.org'
