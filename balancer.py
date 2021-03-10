@@ -741,7 +741,7 @@ def get_net_deposits():
             for withdrawal_id in ledgers:
                 net_deposits += float(ledgers[withdrawal_id]['amount'])
             return net_deposits
-        LOG.error("get_net_deposit() not yet implemented for %s", CONF.exchange)
+        LOG.warning("get_net_deposit() not yet implemented for %s", CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -773,7 +773,7 @@ def get_wallet_balance(price: float):
                     return crypto + (fiat/price)
                 return crypto
         else:
-            LOG.error("get_wallet_balance() is not implemented for %s", CONF.exchange)
+            LOG.warning("get_wallet_balance() is not implemented for %s", CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -1254,7 +1254,7 @@ def get_position_info():
             if position:
                 return position[0]
             return None
-        LOG.error("get_postion_info() is not implemented for %s", CONF.exchange)
+        LOG.warning("get_postion_info() is not implemented for %s", CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
