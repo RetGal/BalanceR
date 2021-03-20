@@ -42,7 +42,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.7.1'
+            self.bot_version = '0.7.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -902,8 +902,7 @@ def do_buy(quote: float, reference_price: float, attempt: int):
         sleep(CONF.order_adjust_seconds)
         order_status = fetch_order_status(order.id)
         if order_status in ['open', 'active']:
-            cancel_order(order)
-            return None
+            return cancel_order(order)
         return order
 
     order_size = calculate_buy_order_size(quote, reference_price, get_current_price())
@@ -958,8 +957,7 @@ def do_sell(quote: float, reference_price: float, attempt: int):
         sleep(CONF.order_adjust_seconds)
         order_status = fetch_order_status(order.id)
         if order_status in ['open', 'active']:
-            cancel_order(order)
-            return None
+            return cancel_order(order)
         return order
 
     order_size = calculate_sell_order_size(quote, reference_price, get_current_price())
@@ -1029,6 +1027,7 @@ def cancel_all_open_orders():
 def cancel_order(order: Order):
     """
     Cancels an order
+    :return the order if it has been filled since, else None
     """
     try:
         if order:
@@ -1036,10 +1035,16 @@ def cancel_order(order: Order):
             if status in ['open', 'active']:
                 EXCHANGE.cancel_order(order.id)
                 LOG.info('Canceled %s', str(order))
+                return None
             else:
+                if status and 'filled' in str(status).lower():
+                    return order
                 LOG.warning('Order to be canceled %s was in state %s', str(order), status)
+        return None
 
     except ccxt.OrderNotFound as error:
+        if 'filled' in str(error.args).lower():
+            return order
         LOG.error('Order to be canceled not found %s %s', str(order), str(error.args))
         return
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:

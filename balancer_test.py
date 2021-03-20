@@ -571,7 +571,7 @@ class BalancerTest(unittest.TestCase):
     @patch('balancer.logging')
     @mock.patch.object(ccxt.kraken, 'cancel_order')
     @mock.patch.object(ccxt.kraken, 'fetch_order_status')
-    def test_cancel_order(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
+    def test_cancel_order_success(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.test = False
         balancer.LOG = mock_logging
@@ -584,11 +584,52 @@ class BalancerTest(unittest.TestCase):
 
         return_values = {'s1o': 'open', 'b2c': 'canceled'}
         mock_fetch_order_status.side_effect = return_values.get
-        balancer.cancel_order(order1)
-        mock_cancel_order.assert_called()
 
-        balancer.cancel_order(order2)
+        return1 = balancer.cancel_order(order1)
+        mock_cancel_order.assert_called()
+        self.assertIsNone(return1)
+
+        return2 = balancer.cancel_order(order2)
         mock_logging.warning.assert_called_with('Order to be canceled %s was in state %s', str(order2), 'canceled')
+        self.assertIsNone(return2)
+
+    @patch('balancer.logging')
+    @mock.patch.object(ccxt.kraken, 'cancel_order')
+    @mock.patch.object(ccxt.kraken, 'fetch_order_status')
+    def test_cancel_order_already_filled(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.test = False
+        balancer.LOG = mock_logging
+        balancer.EXCHANGE = balancer.connect_to_exchange()
+
+        order1 = balancer.Order({'side': 'sell', 'id': 's1o', 'price': 10000, 'amount': 100,
+                                 'datetime': datetime.datetime.today().isoformat()})
+
+        return_values = {'s1o': 'filled'}
+        mock_fetch_order_status.side_effect = return_values.get
+
+        return1 = balancer.cancel_order(order1)
+        mock_cancel_order.assert_not_called()
+        self.assertEqual(order1, return1)
+
+    @patch('balancer.logging')
+    @mock.patch.object(ccxt.kraken, 'cancel_order')
+    @mock.patch.object(ccxt.kraken, 'fetch_order_status')
+    def test_cancel_orderd__not_found_already_filled(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.test = False
+        balancer.LOG = mock_logging
+        balancer.EXCHANGE = balancer.connect_to_exchange()
+
+        order1 = balancer.Order({'side': 'sell', 'id': 's1o', 'price': 10000, 'amount': 100,
+                                 'datetime': datetime.datetime.today().isoformat()})
+
+        return_values = {'s1o': 'open'}
+        mock_fetch_order_status.side_effect = return_values.get
+        mock_cancel_order.side_effect = ccxt.OrderNotFound("Order to be canceled not found sell order id: s1o, price: 10000, amount: 100, created: 2021-03-17T09:50:16.746Z ('bitmex cancelOrder() failed: Unable to cancel order due to existing state: Filled'")
+
+        return1 = balancer.cancel_order(order1)
+        self.assertEqual(order1, return1)
 
     @patch('balancer.logging')
     @patch('ccxt.kraken')
