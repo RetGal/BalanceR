@@ -42,7 +42,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.7.2'
+            self.bot_version = '0.7.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -406,7 +406,7 @@ def send_mail(subject: str, text: str, attachment: str = None):
     server.login(CONF.sender_address, CONF.sender_password)
     server.send_message(msg, None, None, mail_options=(), rcpt_options=())
     server.quit()
-    LOG.info("Sent email to %s", recipients)
+    LOG.info('Sent email to %s', recipients)
 
 
 def append_performance(part: dict, margin_balance: float, net_deposits: float):
@@ -741,7 +741,7 @@ def get_net_deposits():
             for withdrawal_id in ledgers:
                 net_deposits += float(ledgers[withdrawal_id]['amount'])
             return net_deposits
-        LOG.warning("get_net_deposit() not yet implemented for %s", CONF.exchange)
+        LOG.warning('get_net_deposit() not yet implemented for %s', CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -773,7 +773,7 @@ def get_wallet_balance(price: float):
                     return crypto + (fiat/price)
                 return crypto
         else:
-            LOG.warning("get_wallet_balance() is not implemented for %s", CONF.exchange)
+            LOG.warning('get_wallet_balance() is not implemented for %s', CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -891,12 +891,12 @@ def do_buy(quote: float, reference_price: float, attempt: int):
         buy_price = calculate_buy_price(get_current_price())
         order_size = calculate_buy_order_size(quote, reference_price, buy_price)
         if order_size is None:
-            LOG.info("Buy order size below minimum")
+            LOG.info('Buy order size below minimum')
             sleep_for(30, 50)
             return None
         order = create_buy_order(buy_price, order_size)
         if order is None:
-            LOG.warning("Could not create buy order over %s", order_size)
+            LOG.warning('Could not create buy order over %s', order_size)
             sleep_for(30, 50)
             return None
         sleep(CONF.order_adjust_seconds)
@@ -932,7 +932,7 @@ def calculate_buy_order_size(reference_quote: float, reference_price: float, act
     size = BAL['totalBalanceInCrypto'] / (100 / quote) / 1.01
     if size > MIN_ORDER_SIZE:
         return round(size - 0.000000006, 8)
-    LOG.info("Order size %f < %f", size, MIN_ORDER_SIZE)
+    LOG.info('Order size %f < %f', size, MIN_ORDER_SIZE)
     return None
 
 
@@ -946,12 +946,12 @@ def do_sell(quote: float, reference_price: float, attempt: int):
         sell_price = calculate_sell_price(get_current_price())
         order_size = calculate_sell_order_size(quote, reference_price, sell_price)
         if order_size is None:
-            LOG.info("Sell order size below minimum")
+            LOG.info('Sell order size below minimum')
             sleep_for(30, 50)
             return None
         order = create_sell_order(sell_price, order_size)
         if order is None:
-            LOG.warning("Could not create sell order over %s", order_size)
+            LOG.warning('Could not create sell order over %s', order_size)
             sleep_for(30, 50)
             return None
         sleep(CONF.order_adjust_seconds)
@@ -1259,7 +1259,7 @@ def get_position_info():
             if position:
                 return position[0]
             return None
-        LOG.warning("get_postion_info() is not implemented for %s", CONF.exchange)
+        LOG.warning('get_postion_info() is not implemented for %s', CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -1275,10 +1275,13 @@ def set_leverage(new_leverage: float):
             EXCHANGE.private_post_position_leverage({'symbol': CONF.symbol, 'leverage': new_leverage})
             LOG.info('Setting leverage to %s', new_leverage)
         else:
-            LOG.error("set_leverage() not yet implemented for %s", CONF.exchange)
+            LOG.error('set_leverage() not yet implemented for %s', CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        if 'zero margin balance' in str(error.args):
+            LOG.warning('Account not funded yet, retrying in 20 minutes')
+            sleep_for(1200)
         if any(e in str(error.args) for e in STOP_ERRORS):
             LOG.warning('Insufficient available balance - not setting leverage to %s', new_leverage)
             return None
