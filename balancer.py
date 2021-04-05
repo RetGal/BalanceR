@@ -42,7 +42,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.7.3'
+            self.bot_version = '0.7.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -292,7 +292,7 @@ def create_mail_content(daily: bool = False):
     if not daily:
         trade = ["Last trade", "----------", '\n'.join(trade_part['mail']), '\n\n']
     performance = ["Performance", "-----------",
-                   '\n'.join(performance_part['mail']) + '\n* (change within 24 hours)', '\n\n']
+                   '\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
     advice = ["Assessment / advice", "-------------------", '\n'.join(advice_part['mail']), '\n\n']
     settings = ["Your settings", "-------------", '\n'.join(settings_part['mail']), '\n\n']
     general = ["General", "-------", '\n'.join(general_part), '\n\n']
