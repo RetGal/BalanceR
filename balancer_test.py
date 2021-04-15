@@ -935,8 +935,6 @@ class BalancerTest(unittest.TestCase):
         balancer.CONF.report = 'T'
         self.assertTrue(balancer.is_due_date(day))
 
-
-
     @staticmethod
     def create_default_conf():
         conf = balancer.ExchangeConfig
