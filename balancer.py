@@ -37,12 +37,13 @@ class ExchangeConfig:
     def __init__(self):
         self.mm_quotes = ['OFF', 'MM', 'MMRange']
         self.report_cadences = ['T', 'D', 'M', 'A']
+        self.mayer_file = 'mayer.avg'
         config = configparser.ConfigParser(interpolation=None)
         config.read(INSTANCE + ".txt")
 
         try:
             props = config['config']
-            self.bot_version = '0.7.5'
+            self.bot_version = '0.7.6'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -73,6 +74,8 @@ class ExchangeConfig:
                                  .format(self.report, self.report_cadences))
             self.period_in_seconds = round(self.period_in_minutes * 60)
             self.satoshi_factor = 0.00000001
+            if config.has_option('config', 'mayer_file'):
+                self.mayer_file = str(props['mayer_file']).strip('"')
             self.recipient_addresses = str(props['recipient_addresses']).strip('"').replace(' ', '').split(",")
             self.sender_address = str(props['sender_address']).strip('"')
             self.sender_password = str(props['sender_password']).strip('"')
@@ -229,9 +232,8 @@ def calculate_mayer(price: float):
 
 
 def read_daily_average():
-    mayer_file = "mayer.avg"
-    if mayer_file and os.path.isfile(mayer_file):
-        with open("mayer.avg", "rt") as file:
+    if CONF.mayer_file and os.path.isfile(CONF.mayer_file):
+        with open(CONF.mayer_file, "rt") as file:
             return float(file.read())
     return None
 
@@ -1036,10 +1038,9 @@ def cancel_order(order: Order):
                 EXCHANGE.cancel_order(order.id)
                 LOG.info('Canceled %s', str(order))
                 return None
-            else:
-                if status and 'filled' in str(status).lower():
-                    return order
-                LOG.warning('Order to be canceled %s was in state %s', str(order), status)
+            if status and 'filled' in str(status).lower():
+                return order
+            LOG.warning('Order to be canceled %s was in state %s', str(order), status)
         return None
 
     except ccxt.OrderNotFound as error:
