@@ -16,12 +16,15 @@ import ccxt
 class ExchangeConfig:
     def __init__(self):
         config = configparser.ConfigParser()
-        config.read(INSTANCE + ".txt")
+        config.read(INSTANCE + '.txt')
+        self.mayer_file = INSTANCE + '.avg'
 
         try:
             props = dict(config.items('config'))
             self.exchange = str(props['exchange']).strip('"').lower()
             self.db_name = str(props['db_name']).strip('"')
+            if config.has_option(INSTANCE, 'mayer_file'):
+                self.mayer_file = str(props['mayer_file']).strip('"')
         except (configparser.NoSectionError, KeyError):
             raise SystemExit('Invalid configuration for ' + INSTANCE)
 
@@ -167,7 +170,7 @@ def write_control_file():
 
 
 def write_average_file(avg: float):
-    with open(INSTANCE + '.avg', 'w') as file:
+    with open(CONF.mayer_file, 'w') as file:
         file.write(str(avg))
 
 
