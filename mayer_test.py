@@ -57,9 +57,7 @@ class MayerTest(unittest.TestCase):
            return_value=[{'Date': '2020-12-31', 'Price': 30030.3030}, {'Date': '2021-01-01', 'Price': 31031.3131},
                          {'Date': '2021-01-02', 'Price': 32032.3232}])
     def test_complete_data(self, mock_fetch_rates, mock_add_entry):
-        past = datetime.strptime('2021-01-01', '%Y-%m-%d').date()
-
-        mayer.complete_data(past)
+        mayer.complete_data(datetime.strptime('2021-01-01', '%Y-%m-%d').date())
 
         mock_add_entry.assert_called_with('2021-01-02', 32032.3232)
 
