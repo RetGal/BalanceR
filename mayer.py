@@ -2,6 +2,7 @@
 import configparser
 import datetime
 import inspect
+import json
 import logging
 import os
 import random
@@ -11,6 +12,7 @@ import time
 from logging.handlers import RotatingFileHandler
 
 import ccxt
+import requests
 
 
 class ExchangeConfig:
@@ -88,6 +90,7 @@ def init_database():
     conn.commit()
     curs.close()
     conn.close()
+    check_data()
 
 
 def get_last_rate():
@@ -114,7 +117,8 @@ def get_average():
     conn = sqlite3.connect(CONF.db_name, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
     curs = conn.cursor()
     try:
-        return curs.execute("SELECT AVG(price) FROM rates WHERE date BETWEEN '{}' AND '{}'".format(dd_days_ago, today)).fetchone()
+        return curs.execute(
+            "SELECT AVG(price) FROM rates WHERE date BETWEEN '{}' AND '{}'".format(dd_days_ago, today)).fetchone()
     finally:
         curs.close()
         conn.close()
@@ -152,9 +156,9 @@ def persist_rate(price: float):
         else:
             avg = calculate_daily_average(current, price)
             query = "UPDATE rates SET count = count+1, price = {} WHERE date = '{}'".format(avg, today)
-    finally:
         curs.execute(query)
         conn.commit()
+    finally:
         curs.close()
         conn.close()
         LOG.info(query)
@@ -201,6 +205,69 @@ def sleep_for(greater: int, less: int = None):
     else:
         seconds = greater
     time.sleep(seconds)
+
+
+def check_data():
+    last_date = get_last_date()
+    if last_date != datetime.datetime.utcnow().date():
+        complete_data(last_date)
+
+
+def complete_data(last_date: datetime.date):
+    rates = fetch_rates()
+    fill_missing_rates(rates, last_date)
+
+
+def fetch_rates(tries: int = 0):
+    try:
+        req = requests.get('https://www.satochi.co/allBTCPrice')
+        if req.text:
+            rates = json.loads(req.text)
+            return rates[-200:]
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ReadTimeout,
+            ValueError) as error:
+        LOG.error('Got an error %s %s, retrying in about 5 seconds...', type(error).__name__, str(error.args))
+    if tries < 4:
+        sleep_for(4, 6)
+        return fetch_rates(tries + 1)
+    LOG.warning('Failed to fetch missing rates, giving up after 4 attempts')
+    sys.exit(1)
+
+
+def get_last_date():
+    """
+    Fetches the last date from the database
+    :return: The fetched date
+    """
+    conn = sqlite3.connect(CONF.db_name, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
+    curs = conn.cursor()
+    try:
+        return curs.execute("SELECT MAX(date) FROM rates").fetchone()[0]
+    finally:
+        curs.close()
+        conn.close()
+
+
+def fill_missing_rates(rates: [], last_date: datetime.date):
+    """
+    Persists missing daily average prices
+    """
+    for entry in rates:
+        if datetime.datetime.strptime(entry['Date'], '%Y-%m-%d').date() > last_date:
+            add_entry(entry['Date'], entry['Price'])
+
+
+def add_entry(date: datetime.date, price: float):
+    conn = sqlite3.connect(CONF.db_name)
+    curs = conn.cursor()
+    try:
+        query = "INSERT INTO rates VALUES ('{}', 1, {})".format(date, price)
+        curs.execute(query)
+        conn.commit()
+    finally:
+        LOG.info(query)
+        curs.close()
+        conn.close()
 
 
 if __name__ == "__main__":

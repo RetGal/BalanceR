@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime
 from unittest.mock import patch
 
 import mayer
@@ -43,6 +44,24 @@ class MayerTest(unittest.TestCase):
 
         mock_last_rate.assert_called()
         mock_persis_rate.assert_called_with(20000)
+
+    @patch('mayer.get_last_date', return_value=datetime.strptime('2021-01-01', '%Y-%m-%d').date())
+    @patch('mayer.complete_data')
+    def test_check_data(self, mock_complete_data, mock_get_last_date):
+        mayer.check_data()
+
+        mock_complete_data.assert_called_with(datetime.strptime('2021-01-01', '%Y-%m-%d').date())
+
+    @patch('mayer.add_entry')
+    @patch('mayer.fetch_rates',
+           return_value=[{'Date': '2020-12-31', 'Price': 30030.3030}, {'Date': '2021-01-01', 'Price': 31031.3131},
+                         {'Date': '2021-01-02', 'Price': 32032.3232}])
+    def test_complete_data(self, mock_fetch_rates, mock_add_entry):
+        past = datetime.strptime('2021-01-01', '%Y-%m-%d').date()
+
+        mayer.complete_data(past)
+
+        mock_add_entry.assert_called_with('2021-01-02', 32032.3232)
 
 
 if __name__ == '__main__':
