@@ -48,18 +48,41 @@ class MayerTest(unittest.TestCase):
     @patch('mayer.get_last_date', return_value=datetime.strptime('2021-01-01', '%Y-%m-%d').date())
     @patch('mayer.complete_data')
     def test_check_data(self, mock_complete_data, mock_get_last_date):
+        mayer.CONF = self.create_default_conf()
+        mayer.CONF.backup_mayer = 'http://example.org'
         mayer.check_data()
 
         mock_complete_data.assert_called_with(datetime.strptime('2021-01-01', '%Y-%m-%d').date())
+
+    @patch('mayer.logging')
+    @patch('mayer.get_last_date', return_value=datetime.strptime('2021-01-01', '%Y-%m-%d').date())
+    @patch('mayer.complete_data')
+    def test_check_data_no_backup(self, mock_complete_data, mock_get_last_date, mock_logger):
+        mayer.LOG = mock_logger
+        mayer.CONF = self.create_default_conf()
+        mayer.check_data()
+
+        mock_logger.warning.assert_called_with('Detected missing data, last data is from %s',
+                                               datetime.strptime('2021-01-01', '%Y-%m-%d').date())
 
     @patch('mayer.add_entry')
     @patch('mayer.fetch_rates',
            return_value=[{'Date': '2020-12-31', 'Price': 30030.3030}, {'Date': '2021-01-01', 'Price': 31031.3131},
                          {'Date': '2021-01-02', 'Price': 32032.3232}])
     def test_complete_data(self, mock_fetch_rates, mock_add_entry):
+        mayer.CONF = self.create_default_conf()
+        mayer.CONF.backup_mayer = 'http://example.org'
         mayer.complete_data(datetime.strptime('2021-01-01', '%Y-%m-%d').date())
 
         mock_add_entry.assert_called_with('2021-01-02', 32032.3232)
+
+    @staticmethod
+    def create_default_conf():
+        conf = mayer.ExchangeConfig
+        conf.exchange = 'bitmex'
+        conf.db_name = 'mayer.db'
+        conf.backup_mayer = ''
+        return conf
 
 
 if __name__ == '__main__':

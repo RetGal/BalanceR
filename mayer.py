@@ -19,12 +19,15 @@ class ExchangeConfig:
     def __init__(self):
         config = configparser.ConfigParser()
         config.read(INSTANCE + '.txt')
+        self.backup_mayer = ''
         self.mayer_file = INSTANCE + '.avg'
 
         try:
             props = dict(config.items('config'))
             self.exchange = str(props['exchange']).strip('"').lower()
             self.db_name = str(props['db_name']).strip('"')
+            if config.has_option(INSTANCE, 'backup_mayer'):
+                self.backup_mayer = str(props['backup_mayer']).strip('"')
             if config.has_option(INSTANCE, 'mayer_file'):
                 self.mayer_file = str(props['mayer_file']).strip('"')
         except (configparser.NoSectionError, KeyError):
@@ -210,7 +213,10 @@ def sleep_for(greater: int, less: int = None):
 def check_data():
     last_date = get_last_date()
     if last_date != datetime.datetime.utcnow().date():
-        complete_data(last_date)
+        if CONF.backup_mayer:
+            complete_data(last_date)
+        else:
+            LOG.warning('Detected missing data, last data is from %s', last_date)
 
 
 def complete_data(last_date: datetime.date):
@@ -220,7 +226,7 @@ def complete_data(last_date: datetime.date):
 
 def fetch_rates(tries: int = 0):
     try:
-        req = requests.get('https://www.satochi.co/allBTCPrice')
+        req = requests.get(CONF.backup_data)
         if req.text:
             rates = json.loads(req.text)
             return rates[-200:]
