@@ -237,7 +237,7 @@ def fetch_rates(tries: int = 0):
     if tries < 4:
         sleep_for(4, 6)
         return fetch_rates(tries + 1)
-    LOG.warning('Failed to fetch missing rates, giving up after 4 attempts')
+    LOG.error('Failed to fetch missing rates, giving up after 4 attempts')
     sys.exit(1)
 
 
