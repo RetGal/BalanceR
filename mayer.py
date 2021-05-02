@@ -226,7 +226,7 @@ def complete_data(last_date: datetime.date):
 
 def fetch_rates(tries: int = 0):
     try:
-        req = requests.get(CONF.backup_data)
+        req = requests.get(CONF.backup_mayer)
         if req.text:
             rates = json.loads(req.text)
             return rates[-200:]

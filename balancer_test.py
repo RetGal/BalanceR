@@ -1,4 +1,5 @@
 import datetime
+import time
 import unittest
 from unittest import mock
 from unittest.mock import patch
@@ -934,6 +935,16 @@ class BalancerTest(unittest.TestCase):
         self.assertTrue(balancer.is_due_date(day))
         balancer.CONF.report = 'T'
         self.assertTrue(balancer.is_due_date(day))
+
+    def test_sleep_for(self):
+        before = time.time()
+
+        balancer.sleep_for(1, 2)
+
+        after = time.time()
+        diff = after - before
+        self.assertGreater(diff, 1, 'Should have slept for more than 1 second, but did not')
+        self.assertLessEqual(diff, 2, 'Should have slept for less than 2 seconds, but did not')
 
     @staticmethod
     def create_default_conf():

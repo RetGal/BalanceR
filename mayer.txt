@@ -1,4 +1,4 @@
 [config]
 exchange = "EXCHANGE_NAME"
 db_name = "mayer.db"
-backup_myer = ""
+backup_mayer = ""

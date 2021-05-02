@@ -1,3 +1,4 @@
+import time
 import unittest
 from datetime import datetime
 from unittest.mock import patch
@@ -75,6 +76,16 @@ class MayerTest(unittest.TestCase):
         mayer.complete_data(datetime.strptime('2021-01-01', '%Y-%m-%d').date())
 
         mock_add_entry.assert_called_with('2021-01-02', 32032.3232)
+
+    def test_sleep_for(self):
+        before = time.time()
+
+        mayer.sleep_for(1, 2)
+
+        after = time.time()
+        diff = after - before
+        self.assertGreater(diff, 1, 'Should have slept for more than 1 second, but did not')
+        self.assertLessEqual(diff, 2, 'Should have slept for less than 2 seconds, but did not')
 
     @staticmethod
     def create_default_conf():
