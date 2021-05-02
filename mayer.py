@@ -211,8 +211,9 @@ def sleep_for(greater: int, less: int = None):
 
 
 def check_data():
-    last_date = get_last_date()
-    if last_date != datetime.datetime.utcnow().date():
+    last_entry = get_last_date() if get_last_date() else '2021-01-01'
+    last_date = datetime.datetime.strptime(last_entry, '%Y-%m-%d').date()
+    if last_date < datetime.datetime.utcnow().date():
         if CONF.backup_mayer:
             complete_data(last_date)
         else:

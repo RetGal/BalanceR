@@ -46,7 +46,7 @@ class MayerTest(unittest.TestCase):
         mock_last_rate.assert_called()
         mock_persis_rate.assert_called_with(20000)
 
-    @patch('mayer.get_last_date', return_value=datetime.strptime('2021-01-01', '%Y-%m-%d').date())
+    @patch('mayer.get_last_date', return_value='2021-01-01')
     @patch('mayer.complete_data')
     def test_check_data(self, mock_complete_data, mock_get_last_date):
         mayer.CONF = self.create_default_conf()
@@ -56,7 +56,7 @@ class MayerTest(unittest.TestCase):
         mock_complete_data.assert_called_with(datetime.strptime('2021-01-01', '%Y-%m-%d').date())
 
     @patch('mayer.logging')
-    @patch('mayer.get_last_date', return_value=datetime.strptime('2021-01-01', '%Y-%m-%d').date())
+    @patch('mayer.get_last_date', return_value='2021-01-01')
     @patch('mayer.complete_data')
     def test_check_data_no_backup(self, mock_complete_data, mock_get_last_date, mock_logger):
         mayer.LOG = mock_logger
