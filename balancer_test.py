@@ -415,6 +415,26 @@ class BalancerTest(unittest.TestCase):
 
         self.assertAlmostEqual(99, quote, 2)
 
+    @patch('balancer.calculate_quote', return_value=47.49)
+    def test_append_actual_quote(self, mock_calculate_quote):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.max_crypto_quote_in_percent = 50
+        part = {'mail': [], 'csv': []}
+
+        balancer.append_actual_quote(part)
+
+        self.assertEqual("Actual quote:;47.49%", part['csv'][0])
+
+    @patch('balancer.calculate_quote', return_value=47.50)
+    def test_append_actual_quote_near_max(self, mock_calculate_quote):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.max_crypto_quote_in_percent = 50
+        part = {'mail': [], 'csv': []}
+
+        balancer.append_actual_quote(part)
+
+        self.assertEqual("Actual quote:;Max.", part['csv'][0])
+
     def test_stats_add_same_again_day(self):
         today = {'mBal': 0.999, 'price': 10000}
         stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")), today)

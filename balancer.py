@@ -43,7 +43,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.7.6'
+            self.bot_version = '0.7.7'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -461,9 +461,7 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     append_value_change(part, today, yesterday, price)
     append_trading_result(part, today, yesterday, price)
     append_price_change(part, today, price)
-    actual_quote = calculate_quote()
-    part['mail'].append("Actual quote: {:>22.2f}%".format(actual_quote))
-    part['csv'].append("Actual quote:;{:.2f}%".format(actual_quote))
+    append_actual_quote(part)
     used_balance = get_used_balance()
     if used_balance is None:
         used_balance = 'n/a'
@@ -592,6 +590,16 @@ def append_price_change(part: dict, today: dict, price: float):
         change = "% n/a"
     part['mail'].append(rate)
     part['csv'].append("{} price {}:;{};{}".format(CONF.base, CONF.quote, round(price), change))
+
+
+def append_actual_quote(part: dict):
+    actual_quote = calculate_quote()
+    if actual_quote >= CONF.max_crypto_quote_in_percent * 0.95:
+        part['mail'].append("Actual quote: {:>22}".format('Max.'))
+        part['csv'].append("Actual quote:;Max.")
+    else:
+        part['mail'].append("Actual quote: {:>22.2f}%".format(actual_quote))
+        part['csv'].append("Actual quote:;{:.2f}%".format(actual_quote))
 
 
 def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats: Stats, update_stats: bool):
