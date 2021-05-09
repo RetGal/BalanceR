@@ -415,7 +415,7 @@ class BalancerTest(unittest.TestCase):
 
         self.assertAlmostEqual(99, quote, 2)
 
-    @patch('balancer.calculate_quote', return_value=47.49)
+    @patch('balancer.calculate_quote', return_value=48.99)
     def test_append_actual_quote(self, mock_calculate_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.max_crypto_quote_in_percent = 50
@@ -423,9 +423,9 @@ class BalancerTest(unittest.TestCase):
 
         balancer.append_actual_quote(part)
 
-        self.assertEqual("Actual quote:;47.49%", part['csv'][0])
+        self.assertEqual("Actual quote:;49%", part['csv'][0])
 
-    @patch('balancer.calculate_quote', return_value=47.50)
+    @patch('balancer.calculate_quote', return_value=49)
     def test_append_actual_quote_near_max(self, mock_calculate_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.max_crypto_quote_in_percent = 50

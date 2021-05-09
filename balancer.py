@@ -594,12 +594,12 @@ def append_price_change(part: dict, today: dict, price: float):
 
 def append_actual_quote(part: dict):
     actual_quote = calculate_quote()
-    if actual_quote >= CONF.max_crypto_quote_in_percent * 0.95:
+    if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
         part['mail'].append("Actual quote: {:>22}".format('Max.'))
         part['csv'].append("Actual quote:;Max.")
     else:
-        part['mail'].append("Actual quote: {:>22.2f}%".format(actual_quote))
-        part['csv'].append("Actual quote:;{:.2f}%".format(actual_quote))
+        part['mail'].append("Actual quote: {:>22n}%".format(round(actual_quote)))
+        part['csv'].append("Actual quote:;{:n}%".format(round(actual_quote)))
 
 
 def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats: Stats, update_stats: bool):
