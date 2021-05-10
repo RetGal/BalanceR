@@ -326,7 +326,7 @@ def create_report_part_settings():
     part = {'mail': [], 'csv': [], 'labels': []}
     part['labels'].append("Quote {}".format(CONF.base))
     if CONF.auto_quote == 'MMRange':
-        part['csv'].append("n/a".format(CONF.base))
+        part['csv'].append("n/a")
     else:
         part['mail'].append("Quote {} in %: {:>19}".format(CONF.base, CONF.crypto_quote_in_percent))
         part['csv'].append(CONF.crypto_quote_in_percent)
