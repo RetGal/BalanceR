@@ -43,7 +43,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.7.7'
+            self.bot_version = '0.7.8'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -203,9 +203,10 @@ def evaluate_mayer(mayer: dict = None):
 def append_mayer(part: dict):
     mayer = fetch_mayer()
     advice = evaluate_mayer(mayer)
+    part['labels'].append("MM")
     if mayer is None:
         part['mail'].append("Mayer multiple: {:>19} (n/a)".format(advice))
-        part['csv'].append("Mayer multiple:;n/a")
+        part['csv'].append("n/a")
         return
     if advice == 'HOLD':
         part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], 2.4, advice))
@@ -213,7 +214,7 @@ def append_mayer(part: dict):
         part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], mayer['average'], advice))
     else:
         part['mail'].append("Mayer multiple: {:>19.2f} (> {:.2f} = {})".format(mayer['current'], 2.4, advice))
-    part['csv'].append("Mayer multiple:;{:.2f}".format(mayer['current']))
+    part['csv'].append("{:.2f}".format(mayer['current']))
 
 
 def get_mayer():
@@ -249,7 +250,7 @@ def daily_report(immediately: bool = False):
             > datetime.datetime(2012, 1, 17, 12, 1).time() and EMAIL_SENT != now.day:
         content = create_mail_content(True)
         filename_csv = INSTANCE + '.csv'
-        write_csv(content['csv'], filename_csv)
+        update_csv(content, filename_csv)
         if immediately or is_due_date(datetime.date.today()):
             cadence = "Daily" if CONF.report in ['T', 'D'] else "Monthly" if CONF.report == 'M' else 'Annual'
             subject = "{} BalanceR report {}".format(cadence, INSTANCE)
@@ -314,38 +315,57 @@ def create_mail_content(daily: bool = False):
                                                                   ';'.join(settings_part['csv']),
                                                                   CONF.info)
 
-    return {'text': text, 'csv': csv}
+    labels = None if not daily else "Bot;Datetime;{};{};{};\n".format(';'.join(performance_part['labels']),
+                                                                      ';'.join(advice_part['labels']),
+                                                                      ';'.join(settings_part['labels']))
+
+    return {'text': text, 'csv': csv, 'labels': labels}
 
 
 def create_report_part_settings():
-    part = {'mail': [], 'csv': []}
+    part = {'mail': [], 'csv': [], 'labels': []}
+    part['labels'].append("Quote {}".format(CONF.base))
     if CONF.auto_quote == 'MMRange':
-        part['csv'].append("Quote {} in %:;n/a".format(CONF.base))
+        part['csv'].append("n/a".format(CONF.base))
     else:
         part['mail'].append("Quote {} in %: {:>19}".format(CONF.base, CONF.crypto_quote_in_percent))
-        part['csv'].append("Quote {} in %:;{}".format(CONF.base, CONF.crypto_quote_in_percent))
+        part['csv'].append(CONF.crypto_quote_in_percent)
+    part['labels'].append("Auto-Quote")
     part['mail'].append("Auto-Quote: {:>23}".format(CONF.auto_quote))
-    part['csv'].append("Auto-Quote:;{}".format(CONF.auto_quote))
+    part['csv'].append("{}".format(CONF.auto_quote))
+    part['labels'].append("MM Q0")
     part['mail'].append("MM Quote 0: {:>23}".format(CONF.mm_quote_0))
-    part['csv'].append("MM Quote 0:;{}".format(CONF.mm_quote_0))
+    part['csv'].append("{}".format(CONF.mm_quote_0))
+    part['labels'].append("MM Q100")
     part['mail'].append("MM Quote 100: {:>21}".format(CONF.mm_quote_100))
-    part['csv'].append("MM Quote 100:;{}".format(CONF.mm_quote_100))
+    part['csv'].append("{}".format(CONF.mm_quote_100))
+    part['labels'].append("Max quote")
     part['mail'].append("Max quote {} in %: {:>15}".format(CONF.base, CONF.max_crypto_quote_in_percent))
-    part['csv'].append("Max quote {} in %:;{}".format(CONF.base, CONF.max_crypto_quote_in_percent))
+    part['csv'].append("{}".format(CONF.max_crypto_quote_in_percent))
+    part['labels'].append("Tol. %")
     part['mail'].append("Tolerance in %: {:>19}".format(CONF.tolerance_in_percent))
-    part['csv'].append("Tolerance in %:;{}".format(CONF.tolerance_in_percent))
+    part['csv'].append("{}".format(CONF.tolerance_in_percent))
+    part['labels'].append("Period min.")
     part['mail'].append("Period in minutes: {:>16}".format(CONF.period_in_minutes))
-    part['csv'].append("Period in minutes:;{}".format(CONF.period_in_minutes))
+    part['csv'].append("{}".format(CONF.period_in_minutes))
+    part['labels'].append("Report")
     part['mail'].append("Report: {:>27}".format(CONF.report))
-    part['csv'].append("Report:;{}".format(CONF.report))
+    part['csv'].append("{}".format(CONF.report))
+    part['labels'].append("Trade trials")
     part['mail'].append("Trade trials: {:>21}".format(CONF.trade_trials))
-    part['csv'].append("Trade trials:;{}".format(CONF.trade_trials))
+    part['csv'].append("{}".format(CONF.trade_trials))
+    part['labels'].append("Order adj. sec.")
     part['mail'].append("Order adjust seconds: {:>13}".format(CONF.order_adjust_seconds))
-    part['csv'].append("Order adjust seconds:;{}".format(CONF.order_adjust_seconds))
+    part['csv'].append("{}".format(CONF.order_adjust_seconds))
+    part['labels'].append("Trade adv. %")
     part['mail'].append("Trade advantage in %: {:>13}".format(CONF.trade_advantage_in_percent))
-    part['csv'].append("Trade advantage in %:;{}".format(CONF.trade_advantage_in_percent))
+    part['csv'].append("{}".format(CONF.trade_advantage_in_percent))
+    part['labels'].append("Stop buy")
     part['mail'].append("Stop buy: {:>25}".format(str('Y' if CONF.stop_buy is True else 'N')))
-    part['csv'].append("Stop buy:;{}".format(str('Y' if CONF.stop_buy is True else 'N')))
+    part['csv'].append("{}".format(str('Y' if CONF.stop_buy is True else 'N')))
+    part['labels'].append("Info")
+    part['labels'].append("Startdate")
+    part['labels'].append("Startprice")
     return part
 
 
@@ -358,13 +378,13 @@ def create_mail_part_general():
 
 
 def create_report_part_advice():
-    part = {'mail': [], 'csv': []}
+    part = {'mail': [], 'csv': [], 'labels': []}
     append_mayer(part)
     return part
 
 
 def create_report_part_performance(daily: bool):
-    part = {'mail': [], 'csv': []}
+    part = {'mail': [], 'csv': [], 'labels': []}
     margin_balance = get_margin_balance()
     margin_balance_of_fiat = get_margin_balance_of_fiat()
     net_deposits = get_net_deposits()
@@ -376,8 +396,7 @@ def create_report_part_performance(daily: bool):
 
 
 def create_report_part_trade(last_order: Order):
-    part = {'mail': ["Executed: {:>17}".format(str(last_order))],
-            'csv': ["Executed:;{}".format(str(last_order))]}
+    part = {'mail': ["Executed: {:>17}".format(str(last_order))]}
     return part
 
 
@@ -415,26 +434,27 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
     """
     Calculates and appends the absolute and relative overall performance
     """
+    part['labels'].append("Deposit {}".format(CONF.base))
+    part['labels'].append("Overall perf. {}".format(CONF.base))
+    part['labels'].append("Performance")
     if net_deposits is None:
-        part['mail'].append("Net deposits {}: {:>17}".format(CONF.base, 'n/a'))
-        part['mail'].append("Overall performance in {}: {:>7} (% n/a)".format(CONF.base, 'n/a'))
-        part['csv'].append("Net deposits {}:;{}".format(CONF.base, 'n/a'))
-        part['csv'].append("Overall performance in {}:;{};% n/a".format(CONF.base, 'n/a'))
+        part['mail'].append("Net deposits {}: {:>16}".format(CONF.base, 'n/a'))
+        part['mail'].append("Overall performance in {}: {:>6} (% n/a)".format(CONF.base, 'n/a'))
+        part['csv'].append("n/a")
+        part['csv'].append("n/a")
     else:
-        part['mail'].append("Net deposits {}: {:>20.4f}".format(CONF.base, net_deposits))
-        part['csv'].append("Net deposits {}:;{:.4f}".format(CONF.base, net_deposits))
+        part['mail'].append("Net deposits {}: {:>19.4f}".format(CONF.base, net_deposits))
+        part['csv'].append("{:.4f}".format(net_deposits))
         absolute_performance = margin_balance - net_deposits
         if net_deposits > 0 and absolute_performance != 0:
             relative_performance = round(100 / (net_deposits / absolute_performance), 2)
-            part['mail'].append("Overall performance in {}: {:>+10.4f} ({:+.2f}%)".format(CONF.base,
+            part['mail'].append("Overall performance in {}: {:>+9.4f} ({:+.2f}%)".format(CONF.base,
                                                                                           absolute_performance,
                                                                                           relative_performance))
-            part['csv'].append("Overall performance in {}:;{:.4f};{:+.2f}%".format(CONF.base,
-                                                                                   absolute_performance,
-                                                                                   relative_performance))
+            part['csv'].append("{:.4f};{:+.2f}%".format(absolute_performance, relative_performance))
         else:
-            part['mail'].append("Overall performance in {}: {:>+10.4f} (% n/a)".format(CONF.base, absolute_performance))
-            part['csv'].append("Overall performance in {}:;{:.4f};% n/a".format(CONF.base, absolute_performance))
+            part['mail'].append("Overall performance in {}: {:>+9.4f} (% n/a)".format(CONF.base, absolute_performance))
+            part['csv'].append("{:.4f};% n/a".format(absolute_performance))
 
 
 def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: dict, daily: bool):
@@ -462,44 +482,51 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     append_trading_result(part, today, yesterday, price)
     append_price_change(part, today, price)
     append_actual_quote(part)
+    part['labels'].append("Position {}".format(CONF.quote))
     used_balance = get_used_balance()
     if used_balance is None:
         used_balance = 'n/a'
     else:
         used_balance = round(used_balance)
-    part['mail'].append("Position {}: {:>22}".format(CONF.quote, used_balance))
-    part['csv'].append("Position {}:;{}".format(CONF.quote, used_balance))
+    part['mail'].append("Position {}: {:>21}".format(CONF.quote, used_balance))
+    part['csv'].append("{}".format(used_balance))
     append_liquidation_price(part)
 
 
 def append_wallet_balance(part: dict, price: float):
     wallet_balance = get_wallet_balance(price)
+    part['labels'].append("Wallet {}".format(CONF.base))
     if wallet_balance is None:
-        part['mail'].append("Wallet balance {}: {:>15}".format(CONF.base, 'n/a'))
-        part['csv'].append("Wallet balance {}:;n/a".format(CONF.base))
+        part['mail'].append("Wallet balance {}: {:>14}".format(CONF.base, 'n/a'))
+        part['csv'].append("n/a")
     else:
-        part['mail'].append("Wallet balance {}: {:>18.4f}".format(CONF.base, wallet_balance))
-        part['csv'].append("Wallet balance {}:;{:.4f}".format(CONF.base, wallet_balance))
+        part['mail'].append("Wallet balance {}: {:>17.4f}".format(CONF.base, wallet_balance))
+        part['csv'].append("{:.4f}".format(wallet_balance))
 
 
 def append_liquidation_price(part: dict):
     poi = None
+    part['labels'].append("Liq. price {}".format(CONF.quote))
     if CONF.exchange == 'bitmex':
         sleep_for(1, 2)
         poi = get_position_info()
     if poi is not None and 'liquidationPrice' in poi and poi['liquidationPrice'] is not None:
-        part['mail'].append("Liquidation price {}: {:>13}".format(CONF.quote, round(poi['liquidationPrice'])))
-        part['csv'].append("Liquidation price {}:;{}".format(CONF.quote, round(poi['liquidationPrice'])))
+        part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, round(poi['liquidationPrice'])))
+        part['csv'].append("{}".format(round(poi['liquidationPrice'])))
     else:
-        part['mail'].append("Liquidation price {}: {:>13}".format(CONF.quote, 'n/a'))
-        part['csv'].append("Liquidation price {}:;{}".format(CONF.quote, 'n/a'))
+        part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, 'n/a'))
+        part['csv'].append("n/a")
 
 
 def append_margin_change(part: dict, today: dict):
     """
     Appends margin changes
     """
-    m_bal = "Margin balance {}: {:>18.4f}".format(CONF.base, today['mBal'])
+    part['labels'].append("Margin {}".format(CONF.base))
+    part['labels'].append("Change")
+    part['labels'].append("Margin {}".format(CONF.quote))
+    part['labels'].append("Change")
+    m_bal = "Margin balance {}: {:>17.4f}".format(CONF.base, today['mBal'])
     if 'mBalChan24' in today:
         change = "{:+.2f}%".format(today['mBalChan24'])
         m_bal += " ("
@@ -508,9 +535,9 @@ def append_margin_change(part: dict, today: dict):
     else:
         change = "% n/a"
     part['mail'].append(m_bal)
-    part['csv'].append("Margin balance {}:;{:.4f};{}".format(CONF.base, today['mBal'], change))
+    part['csv'].append("{:.4f};{}".format(today['mBal'], change))
 
-    fm_bal = "Margin balance {}: {:>16}".format(CONF.quote, round(today['fmBal']))
+    fm_bal = "Margin balance {}: {:>15}".format(CONF.quote, round(today['fmBal']))
     if 'fmBalChan24' in today:
         change = "{:+.2f}%".format(today['fmBalChan24'])
         fm_bal += "   ("
@@ -519,15 +546,19 @@ def append_margin_change(part: dict, today: dict):
     else:
         change = "% n/a"
     part['mail'].append(fm_bal)
-    part['csv'].append("Margin balance {}:;{};{}".format(CONF.quote, round(today['fmBal']), change))
+    part['csv'].append("{};{}".format(round(today['fmBal']), change))
 
 
 def append_balance_change(part: dict, today: dict):
     """
     Appends balance changes
     """
+    part['labels'].append("Balance {}".format(CONF.base))
+    part['labels'].append("Change")
+    part['labels'].append("Balance {}".format(CONF.quote))
+    part['labels'].append("Change")
     nan = "% n/a"
-    m_bal = "Balance {}: {:>25.4f}".format(CONF.base, today['mBal'])
+    m_bal = "Balance {}: {:>24.4f}".format(CONF.base, today['mBal'])
     if 'mBalChan24' in today:
         change = "{:+.2f}%".format(today['mBalChan24'])
         m_bal += " ("
@@ -536,9 +567,9 @@ def append_balance_change(part: dict, today: dict):
     else:
         change = nan
     part['mail'].append(m_bal)
-    part['csv'].append("Balance {}:;{:.4f};{}".format(CONF.base, today['mBal'], change))
+    part['csv'].append("{:.4f};{}".format(today['mBal'], change))
 
-    fm_bal = "Balance {}: {:>23}".format(CONF.quote, round(today['fmBal']))
+    fm_bal = "Balance {}: {:>22}".format(CONF.quote, round(today['fmBal']))
     if 'fmBalChan24' in today:
         change = "{:+.2f}%".format(today['fmBalChan24'])
         fm_bal += "   ("
@@ -547,10 +578,11 @@ def append_balance_change(part: dict, today: dict):
     else:
         change = nan
     part['mail'].append(fm_bal)
-    part['csv'].append("Balance {}:;{};{}".format(CONF.quote, round(today['fmBal']), change))
+    part['csv'].append("{};{}".format(round(today['fmBal']), change))
 
 
 def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
+    part['labels'].append("Value change")
     nan = "n/a"
     if yesterday and 'mBal' in today and 'fmBal' in today:
         yesterday_total_in_fiat = yesterday['mBal'] * yesterday['price'] + yesterday['fmBal']
@@ -559,28 +591,31 @@ def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
     else:
         change = nan
     if change != nan:
-        part['mail'].append("Value change: {:>22}%*".format(change))
-        part['csv'].append("Value change:;{}%".format(change))
+        part['mail'].append("Value change: {:>21}%*".format(change))
+        part['csv'].append("{}%".format(change))
     else:
-        part['mail'].append("Value change: {:>22}*".format(change))
-        part['csv'].append("Value change:;{}".format(change))
+        part['mail'].append("Value change: {:>21}*".format(change))
+        part['csv'].append("{}".format(change))
 
 
 def append_trading_result(part: dict, today: dict, yesterday: dict, price: float):
+    part['labels'].append("Trading result {}".format(CONF.quote))
     if yesterday and 'mBal' in today and 'fmBal' in today:
         trading_result = (today['mBal'] - yesterday['mBal']) * price + today['fmBal'] - yesterday['fmBal']
         trading_result = "{:+}".format(round(trading_result))
     else:
         trading_result = "n/a"
-    part['mail'].append("Trading result in {}: {:>13}*".format(CONF.quote, trading_result))
-    part['csv'].append("Trading result in {}:;{}".format(CONF.quote, trading_result))
+    part['mail'].append("Trading result in {}: {:>12}*".format(CONF.quote, trading_result))
+    part['csv'].append("{}".format(trading_result))
 
 
 def append_price_change(part: dict, today: dict, price: float):
     """
     Appends price changes
     """
-    rate = "{} price {}: {:>21}".format(CONF.base, CONF.quote, round(price))
+    part['labels'].append("{} price {}".format(CONF.base, CONF.quote))
+    part['labels'].append("Change")
+    rate = "{} price {}: {:>20}".format(CONF.base, CONF.quote, round(price))
     if 'priceChan24' in today:
         change = "{:+.2f}%".format(today['priceChan24'])
         rate += "   ("
@@ -589,17 +624,18 @@ def append_price_change(part: dict, today: dict, price: float):
     else:
         change = "% n/a"
     part['mail'].append(rate)
-    part['csv'].append("{} price {}:;{};{}".format(CONF.base, CONF.quote, round(price), change))
+    part['csv'].append("{};{}".format(round(price), change))
 
 
 def append_actual_quote(part: dict):
     actual_quote = calculate_quote()
+    part['labels'].append("Actual quote")
     if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
-        part['mail'].append("Actual quote: {:>22}".format('Max.'))
-        part['csv'].append("Actual quote:;Max.")
+        part['mail'].append("Actual quote: {:>21}".format('Max.'))
+        part['csv'].append("Max.")
     else:
-        part['mail'].append("Actual quote: {:>22n}%".format(round(actual_quote)))
-        part['csv'].append("Actual quote:;{:n}%".format(round(actual_quote)))
+        part['mail'].append("Actual quote: {:>21n}%".format(round(actual_quote)))
+        part['csv'].append("{:n}%".format(round(actual_quote)))
 
 
 def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats: Stats, update_stats: bool):
@@ -645,10 +681,20 @@ def persist_statistics(stats: Stats):
         pickle.dump(stats, file)
 
 
+def update_csv(content: dict, filename_csv: str):
+    if not os.path.isfile(filename_csv) or (int(datetime.date.today().strftime("%j")) == 1 and not is_already_written(filename_csv)):
+        write_csv_header(content['labels'], filename_csv)
+    write_csv(content['csv'], filename_csv)
+
+
+def write_csv_header(content: str, filename_csv: str):
+    with open(filename_csv, 'w') as file:
+        file.write(content)
+
+
 def write_csv(content: str, filename_csv: str):
     if not is_already_written(filename_csv):
-        write_mode = 'a' if int(datetime.date.today().strftime("%j")) != 1 else 'w'
-        with open(filename_csv, write_mode) as file:
+        with open(filename_csv, 'a') as file:
             file.write(content)
 
 
