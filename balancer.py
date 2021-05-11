@@ -43,7 +43,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.7.8'
+            self.bot_version = '0.7.9'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -329,7 +329,7 @@ def create_report_part_settings():
         part['csv'].append("n/a")
     else:
         part['mail'].append("Quote {} in %: {:>19}".format(CONF.base, CONF.crypto_quote_in_percent))
-        part['csv'].append(CONF.crypto_quote_in_percent)
+        part['csv'].append("{}".format(CONF.crypto_quote_in_percent))
     part['labels'].append("Auto-Quote")
     part['mail'].append("Auto-Quote: {:>23}".format(CONF.auto_quote))
     part['csv'].append("{}".format(CONF.auto_quote))
@@ -442,6 +442,7 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
         part['mail'].append("Overall performance in {}: {:>6} (% n/a)".format(CONF.base, 'n/a'))
         part['csv'].append("n/a")
         part['csv'].append("n/a")
+        part['csv'].append("% n/a")
     else:
         part['mail'].append("Net deposits {}: {:>19.4f}".format(CONF.base, net_deposits))
         part['csv'].append("{:.4f}".format(net_deposits))
