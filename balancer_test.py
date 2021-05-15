@@ -424,7 +424,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_actual_quote(part)
 
         self.assertEqual("49%", part['csv'][0])
-        self.assertEqual("Actual quote", part['labels'][0])
+        self.assertEqual("Actual Quote", part['labels'][0])
 
     @patch('balancer.calculate_quote', return_value=49)
     def test_append_actual_quote_near_max(self, mock_calculate_quote):
@@ -435,7 +435,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_actual_quote(part)
 
         self.assertEqual("Max.", part['csv'][0])
-        self.assertEqual("Actual quote", part['labels'][0])
+        self.assertEqual("Actual Quote", part['labels'][0])
 
     def test_stats_add_same_again_day(self):
         today = {'mBal': 0.999, 'price': 10000}
@@ -748,7 +748,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_value_change(part, today, yesterday, 10000)
 
         self.assertEqual('+0.50%', part['csv'][0])
-        self.assertEqual('Value change', part['labels'][0])
+        self.assertEqual('Value Change', part['labels'][0])
 
     def test_append_net_change_positive_crypto(self):
         part = {'mail': [], 'csv': [], 'labels': []}
@@ -758,7 +758,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_value_change(part, today, yesterday, 10000)
 
         self.assertEqual('+0.50%', part['csv'][0])
-        self.assertEqual('Value change', part['labels'][0])
+        self.assertEqual('Value Change', part['labels'][0])
 
     def test_append_net_change_positive_crypto_by_price(self):
         part = {'mail': [], 'csv': [], 'labels': []}
@@ -768,7 +768,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_value_change(part, today, yesterday, 10070)
 
         self.assertEqual('+0.50%', part['csv'][0])
-        self.assertEqual('Value change', part['labels'][0])
+        self.assertEqual('Value Change', part['labels'][0])
 
     def test_append_net_change_negative_fiat(self):
         part = {'mail': [], 'csv': [], 'labels': []}
@@ -778,7 +778,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_value_change(part, today, yesterday, 10000)
 
         self.assertEqual('-0.50%', part['csv'][0])
-        self.assertEqual('Value change', part['labels'][0])
+        self.assertEqual('Value Change', part['labels'][0])
 
     def test_append_net_change_negative_crypto(self):
         part = {'mail': [], 'csv': [], 'labels': []}
@@ -788,7 +788,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_value_change(part, today, yesterday, 10000)
 
         self.assertEqual('-0.50%', part['csv'][0])
-        self.assertEqual('Value change', part['labels'][0])
+        self.assertEqual('Value Change', part['labels'][0])
 
     def test_append_net_change_negative_crypto_by_price(self):
         part = {'mail': [], 'csv': [], 'labels': []}
@@ -798,7 +798,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_value_change(part, today, yesterday, 10000)
 
         self.assertEqual('-0.50%', part['csv'][0])
-        self.assertEqual('Value change', part['labels'][0])
+        self.assertEqual('Value Change', part['labels'][0])
 
     def test_append_trading_result_positive(self):
         balancer.CONF.quote = 'EUR'
@@ -809,7 +809,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_trading_result(part, today, yesterday, 10000)
 
         self.assertEqual('+2', part['csv'][0])
-        self.assertEqual('Trading result EUR', part['labels'][0])
+        self.assertEqual('Trading Result EUR', part['labels'][0])
 
     def test_append_trading_result_negative(self):
         balancer.CONF.quote = 'EUR'
@@ -820,7 +820,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_trading_result(part, today, yesterday, 10000)
 
         self.assertEqual('-1', part['csv'][0])
-        self.assertEqual('Trading result EUR', part['labels'][0])
+        self.assertEqual('Trading Result EUR', part['labels'][0])
 
     def test_append_trading_result_real_life_positive(self):
         balancer.CONF.quote = 'USD'
@@ -831,7 +831,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_trading_result(part, today, yesterday, 11222)
 
         self.assertEqual('+0', part['csv'][0])
-        self.assertEqual('Trading result USD', part['labels'][0])
+        self.assertEqual('Trading Result USD', part['labels'][0])
 
     def test_append_trading_result_real_life_negative(self):
         balancer.CONF.quote = 'EUR'
@@ -842,7 +842,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_trading_result(part, today, yesterday, 9061)
 
         self.assertEqual('-4', part['csv'][0])
-        self.assertEqual('Trading result EUR', part['labels'][0])
+        self.assertEqual('Trading Result EUR', part['labels'][0])
 
     def test_append_price_change(self):
         balancer.CONF = self.create_default_conf()
@@ -852,7 +852,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_price_change(part, today, 100)
 
         self.assertEqual('100;+0.21%', part['csv'][0])
-        self.assertEqual('BTC price EUR', part['labels'][0])
+        self.assertEqual('BTC Price EUR', part['labels'][0])
 
     def test_append_liquidation_price_kraken(self):
         balancer.CONF = self.create_default_conf()
@@ -861,7 +861,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_liquidation_price(part)
 
         self.assertEqual('n/a', part['csv'][0])
-        self.assertEqual('Liq. price EUR', part['labels'][0])
+        self.assertEqual('Liq. Price EUR', part['labels'][0])
 
     @patch('balancer.get_position_info', return_value={'liquidationPrice': 10000})
     def test_append_liquidation_price_bitmex(self, mock_position_info):
@@ -873,7 +873,7 @@ class BalancerTest(unittest.TestCase):
         balancer.append_liquidation_price(part)
 
         self.assertEqual('10000', part['csv'][0])
-        self.assertEqual('Liq. price USD', part['labels'][0])
+        self.assertEqual('Liq. Price USD', part['labels'][0])
 
     @patch('ccxt.kraken')
     def test_get_net_deposits(self, mock_kraken):

@@ -43,7 +43,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.7.9'
+            self.bot_version = '0.8.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -331,36 +331,36 @@ def create_report_part_settings():
         part['mail'].append("Quote {} in %: {:>19}".format(CONF.base, CONF.crypto_quote_in_percent))
         part['csv'].append("{}".format(CONF.crypto_quote_in_percent))
     part['labels'].append("Auto-Quote")
-    part['mail'].append("Auto-Quote: {:>23}".format(CONF.auto_quote))
+    part['mail'].append("Auto-quote: {:>23}".format(CONF.auto_quote))
     part['csv'].append("{}".format(CONF.auto_quote))
     part['labels'].append("MM Q0")
-    part['mail'].append("MM Quote 0: {:>23}".format(CONF.mm_quote_0))
+    part['mail'].append("MM quote 0: {:>23}".format(CONF.mm_quote_0))
     part['csv'].append("{}".format(CONF.mm_quote_0))
     part['labels'].append("MM Q100")
-    part['mail'].append("MM Quote 100: {:>21}".format(CONF.mm_quote_100))
+    part['mail'].append("MM quote 100: {:>21}".format(CONF.mm_quote_100))
     part['csv'].append("{}".format(CONF.mm_quote_100))
-    part['labels'].append("Max quote")
+    part['labels'].append("Max Quote")
     part['mail'].append("Max quote {} in %: {:>15}".format(CONF.base, CONF.max_crypto_quote_in_percent))
     part['csv'].append("{}".format(CONF.max_crypto_quote_in_percent))
     part['labels'].append("Tol. %")
     part['mail'].append("Tolerance in %: {:>19}".format(CONF.tolerance_in_percent))
     part['csv'].append("{}".format(CONF.tolerance_in_percent))
-    part['labels'].append("Period min.")
+    part['labels'].append("Period Min.")
     part['mail'].append("Period in minutes: {:>16}".format(CONF.period_in_minutes))
     part['csv'].append("{}".format(CONF.period_in_minutes))
     part['labels'].append("Report")
     part['mail'].append("Report: {:>27}".format(CONF.report))
     part['csv'].append("{}".format(CONF.report))
-    part['labels'].append("Trade trials")
+    part['labels'].append("Trade Trials")
     part['mail'].append("Trade trials: {:>21}".format(CONF.trade_trials))
     part['csv'].append("{}".format(CONF.trade_trials))
-    part['labels'].append("Order adj. sec.")
+    part['labels'].append("Order Adj. Sec.")
     part['mail'].append("Order adjust seconds: {:>13}".format(CONF.order_adjust_seconds))
     part['csv'].append("{}".format(CONF.order_adjust_seconds))
-    part['labels'].append("Trade adv. %")
+    part['labels'].append("Trade Adv. %")
     part['mail'].append("Trade advantage in %: {:>13}".format(CONF.trade_advantage_in_percent))
     part['csv'].append("{}".format(CONF.trade_advantage_in_percent))
-    part['labels'].append("Stop buy")
+    part['labels'].append("Stop Buy")
     part['mail'].append("Stop buy: {:>25}".format(str('Y' if CONF.stop_buy is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.stop_buy is True else 'N')))
     part['labels'].append("Info")
@@ -435,7 +435,7 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
     Calculates and appends the absolute and relative overall performance
     """
     part['labels'].append("Deposit {}".format(CONF.base))
-    part['labels'].append("Overall perf. {}".format(CONF.base))
+    part['labels'].append("Overall Perf. {}".format(CONF.base))
     part['labels'].append("Performance")
     if net_deposits is None:
         part['mail'].append("Net deposits {}: {:>16}".format(CONF.base, 'n/a'))
@@ -507,7 +507,7 @@ def append_wallet_balance(part: dict, price: float):
 
 def append_liquidation_price(part: dict):
     poi = None
-    part['labels'].append("Liq. price {}".format(CONF.quote))
+    part['labels'].append("Liq. Price {}".format(CONF.quote))
     if CONF.exchange == 'bitmex':
         sleep_for(1, 2)
         poi = get_position_info()
@@ -583,7 +583,7 @@ def append_balance_change(part: dict, today: dict):
 
 
 def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
-    part['labels'].append("Value change")
+    part['labels'].append("Value Change")
     nan = "n/a"
     if yesterday and 'mBal' in today and 'fmBal' in today:
         yesterday_total_in_fiat = yesterday['mBal'] * yesterday['price'] + yesterday['fmBal']
@@ -600,7 +600,7 @@ def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
 
 
 def append_trading_result(part: dict, today: dict, yesterday: dict, price: float):
-    part['labels'].append("Trading result {}".format(CONF.quote))
+    part['labels'].append("Trading Result {}".format(CONF.quote))
     if yesterday and 'mBal' in today and 'fmBal' in today:
         trading_result = (today['mBal'] - yesterday['mBal']) * price + today['fmBal'] - yesterday['fmBal']
         trading_result = "{:+}".format(round(trading_result))
@@ -614,7 +614,7 @@ def append_price_change(part: dict, today: dict, price: float):
     """
     Appends price changes
     """
-    part['labels'].append("{} price {}".format(CONF.base, CONF.quote))
+    part['labels'].append("{} Price {}".format(CONF.base, CONF.quote))
     part['labels'].append("Change")
     rate = "{} price {}: {:>20}".format(CONF.base, CONF.quote, round(price))
     if 'priceChan24' in today:
@@ -630,7 +630,7 @@ def append_price_change(part: dict, today: dict, price: float):
 
 def append_actual_quote(part: dict):
     actual_quote = calculate_quote()
-    part['labels'].append("Actual quote")
+    part['labels'].append("Actual Quote")
     if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
         part['mail'].append("Actual quote: {:>21}".format('Max.'))
         part['csv'].append("Max.")
