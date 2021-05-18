@@ -43,7 +43,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.8.0'
+            self.bot_version = '0.8.1'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1434,6 +1434,12 @@ def calculate_balances():
     return balance
 
 
+def is_nonprofit_trade(last_order: Order, action: dict):
+    if action['direction'] == 'BUY':
+        return last_order and last_order.side.upper() != action['direction'] and last_order.price < action['price']
+    return last_order and last_order.side.upper() != action['direction'] and last_order.price > action['price']
+
+
 def handle_account_errors(error_message: str):
     if any(e in error_message.lower() for e in ACCOUNT_ERRORS):
         LOG.error(error_message)
@@ -1489,16 +1495,22 @@ if __name__ == '__main__':
     if not KEEP_ORDERS:
         cancel_all_open_orders()
 
+    LAST_ORDER = get_closed_order()
+
     while 1:
         BAL = calculate_balances()
         ACTION = meditate(calculate_quote(), BAL['price'])
         ATTEMPT: int = 1
         while ACTION:
+            if is_nonprofit_trade(LAST_ORDER, ACTION):
+                LOG.info('Not %sing @ %s', ACTION['direction'].lower(), ACTION['price'])
+                break
             if ACTION['direction'] == 'BUY':
                 ORDER = do_buy(ACTION['percentage'], ACTION['price'], ATTEMPT)
             else:
                 ORDER = do_sell(ACTION['percentage'], ACTION['price'], ATTEMPT)
             if ORDER:
+                LAST_ORDER = ORDER
                 # we need the values after the trade
                 BAL = calculate_balances()
                 do_post_trade_action()
