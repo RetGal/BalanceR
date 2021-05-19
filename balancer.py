@@ -43,7 +43,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.8.3'
+            self.bot_version = '0.8.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -946,6 +946,10 @@ def do_buy(quote: float, reference_price: float, attempt: int):
     """
     if attempt <= CONF.trade_trials:
         buy_price = calculate_buy_price(get_current_price())
+        max_price = last_price('BUY')
+        if max_price and max_price < buy_price:
+            LOG.info('Not buying @ %s', buy_price)
+            return None
         order_size = calculate_buy_order_size(quote, reference_price, buy_price)
         if order_size is None:
             LOG.info('Buy order size below minimum')
@@ -1001,6 +1005,10 @@ def do_sell(quote: float, reference_price: float, attempt: int):
     """
     if attempt <= CONF.trade_trials:
         sell_price = calculate_sell_price(get_current_price())
+        min_price = last_price('SELL')
+        if min_price and min_price > sell_price:
+            LOG.info('Not selling @ %s', sell_price)
+            return None
         order_size = calculate_sell_order_size(quote, reference_price, sell_price)
         if order_size is None:
             LOG.info('Sell order size below minimum')
@@ -1452,6 +1460,10 @@ def is_nonprofit_trade(last_order: Order, action: dict):
     if action['direction'] == 'BUY':
         return last_order and last_order.side.upper() != action['direction'] and last_order.price < action['price']
     return last_order and last_order.side.upper() != action['direction'] and last_order.price > action['price']
+
+
+def last_price(direction: str):
+    return LAST_ORDER.price if LAST_ORDER and LAST_ORDER.side.upper() != direction else None
 
 
 def handle_account_errors(error_message: str):
