@@ -632,7 +632,7 @@ def append_actual_quote(part: dict):
     actual_quote = calculate_quote()
     part['labels'].append("Actual Quote")
     if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
-        part['mail'].append("Actual quote: {:>21}".format('Max.'))
+        part['mail'].append("Actual quote: {:>21n}%  (Max.)".format(round(actual_quote)))
         part['csv'].append("Max.")
     else:
         part['mail'].append("Actual quote: {:>21n}%".format(round(actual_quote)))
