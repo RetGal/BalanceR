@@ -1110,7 +1110,7 @@ def cancel_order(order: Order):
         if 'filled' in str(error.args).lower():
             return order
         LOG.error('Order to be canceled not found %s %s', str(order), str(error.args))
-        return
+        return None
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
