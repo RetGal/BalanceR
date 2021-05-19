@@ -43,7 +43,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.8.1'
+            self.bot_version = '0.8.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1093,7 +1093,7 @@ def cancel_order(order: Order):
                 EXCHANGE.cancel_order(order.id)
                 LOG.info('Canceled %s', str(order))
                 return None
-            if status and 'filled' in str(status).lower():
+            if status and str(status).lower() in ['filled', 'closed']:
                 return order
             LOG.warning('Order to be canceled %s was in state %s', str(order), status)
         return None
@@ -1404,6 +1404,10 @@ def calculate_target_quote():
 
 
 def calculate_quote():
+    if CONF.exchange == 'bitmex':
+        crypto_quote = calculate_used_margin_percentage() * 100
+        LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
+        return crypto_quote
     crypto_quote = (BAL['cryptoBalance'] / BAL['totalBalanceInCrypto']) * 100 if BAL['cryptoBalance'] > 0 else 0
     LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, BAL['totalBalanceInCrypto'], BAL['cryptoBalance'], crypto_quote, BAL['price'])
     return crypto_quote
@@ -1432,6 +1436,16 @@ def calculate_balances():
     balance['price'] = get_current_price()
     balance['totalBalanceInCrypto'] = balance['cryptoBalance'] + (fiat_balance / balance['price'])
     return balance
+
+
+def calculate_used_margin_percentage():
+    """
+    Calculates the used margin percentage
+    """
+    bal = get_margin_balance()
+    if bal['total'] <= 0:
+        return 0
+    return float(100 - (bal['free'] / bal['total']) * 100)
 
 
 def is_nonprofit_trade(last_order: Order, action: dict):
