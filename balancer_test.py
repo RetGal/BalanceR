@@ -488,7 +488,8 @@ class BalancerTest(unittest.TestCase):
 
         balancer.append_actual_quote(part)
 
-        self.assertEqual("Max.", part['csv'][0])
+        self.assertEqual("49%", part['csv'][0])
+        self.assertEqual("Actual quote:                    49%  (Max.)", part['mail'][0])
         self.assertEqual("Actual Quote", part['labels'][0])
 
     def test_stats_add_same_again_day(self):

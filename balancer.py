@@ -633,10 +633,9 @@ def append_actual_quote(part: dict):
     part['labels'].append("Actual Quote")
     if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
         part['mail'].append("Actual quote: {:>21n}%  (Max.)".format(round(actual_quote)))
-        part['csv'].append("Max.")
     else:
         part['mail'].append("Actual quote: {:>21n}%".format(round(actual_quote)))
-        part['csv'].append("{:n}%".format(round(actual_quote)))
+    part['csv'].append("{:n}%".format(round(actual_quote)))
 
 
 def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats: Stats, update_stats: bool):
