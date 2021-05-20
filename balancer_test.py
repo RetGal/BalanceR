@@ -467,7 +467,7 @@ class BalancerTest(unittest.TestCase):
 
         quote = balancer.calculate_actual_quote()
 
-        self.assertAlmostEqual(116.06, quote, 2)
+        self.assertAlmostEqual(116.064, quote, 3)
 
     @patch('balancer.calculate_actual_quote', return_value=48.99)
     def test_append_actual_quote(self, mock_calculate_actual_quote):
