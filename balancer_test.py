@@ -405,51 +405,72 @@ class BalancerTest(unittest.TestCase):
         self.assertAlmostEqual(37.5, target_quote, 1)
 
     @patch('balancer.logging')
-    def test_calculate_quote_very_low(self, mock_logger):
+    def test_calculate_actual_quote_very_low(self, mock_logger):
+        balancer.CONF = self.create_default_conf()
         balancer.LOG = mock_logger
         balancer.BAL['cryptoBalance'] = 0.02
         balancer.BAL['totalBalanceInCrypto'] = 1.00
         balancer.BAL['price'] = 0
 
-        quote = balancer.calculate_quote()
+        quote = balancer.calculate_actual_quote()
 
         self.assertAlmostEqual(2, quote, 2)
 
     @patch('balancer.logging')
-    def test_calculate_quote_low(self, mock_logger):
+    def test_calculate_actual_quote_low(self, mock_logger):
+        balancer.CONF = self.create_default_conf()
         balancer.LOG = mock_logger
         balancer.BAL['cryptoBalance'] = 1.002
         balancer.BAL['totalBalanceInCrypto'] = 2.002
         balancer.BAL['price'] = 0
 
-        quote = balancer.calculate_quote()
+        quote = balancer.calculate_actual_quote()
 
         self.assertAlmostEqual(50.05, quote, 2)
 
     @patch('balancer.logging')
-    def test_calculate_quote_lowest(self, mock_logger):
+    def test_calculate_actual_quote_lowest(self, mock_logger):
+        balancer.CONF = self.create_default_conf()
         balancer.LOG = mock_logger
         balancer.BAL['cryptoBalance'] = 1294.79168016 / 6477
         balancer.BAL['totalBalanceInCrypto'] = 2584.87168016 / 6477
         balancer.BAL['price'] = 0
 
-        quote = balancer.calculate_quote()
+        quote = balancer.calculate_actual_quote()
 
         self.assertAlmostEqual(50.0911, quote, 3)
 
     @patch('balancer.logging')
-    def test_calculate_quote_high(self, mock_logger):
+    def test_calculate_actual_quote_high(self, mock_logger):
+        balancer.CONF = self.create_default_conf()
         balancer.LOG = mock_logger
         balancer.BAL['cryptoBalance'] = 0.99
         balancer.BAL['totalBalanceInCrypto'] = 1.00
         balancer.BAL['price'] = 0
 
-        quote = balancer.calculate_quote()
+        quote = balancer.calculate_actual_quote()
 
         self.assertAlmostEqual(99, quote, 2)
 
-    @patch('balancer.calculate_quote', return_value=48.99)
-    def test_append_actual_quote(self, mock_calculate_quote):
+    @patch('balancer.logging')
+    @patch('ccxt.bitmex')
+    def test_calculate_actual_quote_bitmex(self, mock_bitmex, mock_logger):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.EXCHANGE = mock_bitmex
+        balancer.LOG = mock_logger
+        balancer.BAL['cryptoBalance'] = 0.0544
+        balancer.BAL['totalBalanceInCrypto'] = 0.0411
+        balancer.BAL['price'] = 40543
+
+        mock_bitmex.private_get_position.return_value = [{'currentQty': 1934}]
+
+        quote = balancer.calculate_actual_quote()
+
+        self.assertAlmostEqual(116.06, quote, 2)
+
+    @patch('balancer.calculate_actual_quote', return_value=48.99)
+    def test_append_actual_quote(self, mock_calculate_actual_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.max_crypto_quote_in_percent = 50
         part = {'mail': [], 'csv': [], 'labels': []}
@@ -459,8 +480,8 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual("49%", part['csv'][0])
         self.assertEqual("Actual Quote", part['labels'][0])
 
-    @patch('balancer.calculate_quote', return_value=49)
-    def test_append_actual_quote_near_max(self, mock_calculate_quote):
+    @patch('balancer.calculate_actual_quote', return_value=49)
+    def test_append_actual_quote_near_max(self, mock_calculate_actual_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.max_crypto_quote_in_percent = 50
         part = {'mail': [], 'csv': [], 'labels': []}

@@ -43,7 +43,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.8.4'
+            self.bot_version = '0.8.5'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -629,7 +629,7 @@ def append_price_change(part: dict, today: dict, price: float):
 
 
 def append_actual_quote(part: dict):
-    actual_quote = calculate_quote()
+    actual_quote = calculate_actual_quote()
     part['labels'].append("Actual Quote")
     if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
         part['mail'].append("Actual quote: {:>21n}%  (Max.)".format(round(actual_quote)))
@@ -1411,11 +1411,15 @@ def calculate_target_quote():
     return target_quote
 
 
-def calculate_quote():
+def calculate_actual_quote():
     if CONF.exchange == 'bitmex':
-        crypto_quote = calculate_used_margin_percentage() * 100
-        LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
-        return crypto_quote
+        position = EXCHANGE.private_get_position()
+        if position:
+            position_fiat = float(position[0]['currentQty'])
+            crypto_quote = (position_fiat / BAL['price'] / BAL['totalBalanceInCrypto']) * 100
+            LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
+            return crypto_quote
+        return 0
     crypto_quote = (BAL['cryptoBalance'] / BAL['totalBalanceInCrypto']) * 100 if BAL['cryptoBalance'] > 0 else 0
     LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, BAL['totalBalanceInCrypto'], BAL['cryptoBalance'], crypto_quote, BAL['price'])
     return crypto_quote
@@ -1525,7 +1529,7 @@ if __name__ == '__main__':
 
     while 1:
         BAL = calculate_balances()
-        ACTION = meditate(calculate_quote(), BAL['price'])
+        ACTION = meditate(calculate_actual_quote(), BAL['price'])
         ATTEMPT: int = 1
         while ACTION:
             if is_nonprofit_trade(LAST_ORDER, ACTION):
@@ -1545,6 +1549,6 @@ if __name__ == '__main__':
                 daily_report()
                 ATTEMPT += 1
                 BAL = calculate_balances()
-                ACTION = meditate(calculate_quote(), BAL['price'])
+                ACTION = meditate(calculate_actual_quote(), BAL['price'])
         daily_report()
         sleep_for(CONF.period_in_seconds)
