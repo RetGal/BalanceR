@@ -229,6 +229,16 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(26, action['percentage'])
         self.assertEqual(10000, action['price'])
 
+    def test_meditate_quote_too_low_with_auto_quote_off_should_ignore_max_crypto_quote(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.auto_quote = 'OFF'
+        balancer.CONF.crypto_quote_in_percent = 70
+        balancer.CONF.max_crypto_quote_in_percent = 60
+
+        action = balancer.meditate(65, 10000)
+
+        self.assertEqual('BUY', action['direction'])
+
     @patch('balancer.calculate_target_quote', return_value=65)
     def test_meditate_quote_too_low_but_above_max_crypto_quote(self, mock_calculate_target_quote):
         balancer.CONF = self.create_default_conf()

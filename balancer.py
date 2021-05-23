@@ -28,8 +28,10 @@ EMAIL_SENT = False
 EMAIL_ONLY = False
 KEEP_ORDERS = False
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
-STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price', 'nvalid arg']
-ACCOUNT_ERRORS = ['account has been disabled', 'key is disabled', 'authentication failed', 'permission denied', 'invalid api key']
+STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price',
+               'nvalid arg']
+ACCOUNT_ERRORS = ['account has been disabled', 'key is disabled', 'authentication failed', 'permission denied',
+                  'invalid api key']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
 
@@ -43,7 +45,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.8.5'
+            self.bot_version = '0.8.6'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -131,6 +133,7 @@ class Stats:
     """
     Holds the daily statistics in a ring memory (today plus the previous two)
     """
+
     def __init__(self, day_of_year: int = None, data: dict = None):
         self.days = []
         if day_of_year and data:
@@ -179,7 +182,8 @@ def fetch_mayer(tries: int = 0):
         req = requests.get('https://mayermultiple.info/current.json')
         if req.text:
             mayer = req.json()['data']
-            return {'current': float(mayer['current_mayer_multiple']), 'average': float(mayer['average_mayer_multiple'])}
+            return {'current': float(mayer['current_mayer_multiple']),
+                    'average': float(mayer['average_mayer_multiple'])}
     except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ReadTimeout,
             ValueError) as error:
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -211,7 +215,8 @@ def append_mayer(part: dict):
     if advice == 'HOLD':
         part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], 2.4, advice))
     elif advice == 'BUY':
-        part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], mayer['average'], advice))
+        part['mail'].append(
+            "Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], mayer['average'], advice))
     else:
         part['mail'].append("Mayer multiple: {:>19.2f} (> {:.2f} = {})".format(mayer['current'], 2.4, advice))
     part['csv'].append("{:.2f}".format(mayer['current']))
@@ -228,7 +233,7 @@ def get_mayer():
 def calculate_mayer(price: float):
     average = read_daily_average()
     if average:
-        return {'current': price/average}
+        return {'current': price / average}
     return None
 
 
@@ -450,8 +455,8 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
         if net_deposits > 0 and absolute_performance != 0:
             relative_performance = round(100 / (net_deposits / absolute_performance), 2)
             part['mail'].append("Overall performance in {}: {:>+9.4f} ({:+.2f}%)".format(CONF.base,
-                                                                                          absolute_performance,
-                                                                                          relative_performance))
+                                                                                         absolute_performance,
+                                                                                         relative_performance))
             part['csv'].append("{:.4f};{:+.2f}%".format(absolute_performance, relative_performance))
         else:
             part['mail'].append("Overall performance in {}: {:>+9.4f} (% n/a)".format(CONF.base, absolute_performance))
@@ -466,7 +471,8 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     append_wallet_balance(part, price)
     stats = load_statistics()
     if CONF.exchange == 'bitmex':
-        today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, stats, daily)
+        today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, stats,
+                                           daily)
         append_margin_change(part, today)
     else:
         c_bal = get_crypto_balance()
@@ -588,7 +594,8 @@ def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
     if yesterday and 'mBal' in today and 'fmBal' in today:
         yesterday_total_in_fiat = yesterday['mBal'] * yesterday['price'] + yesterday['fmBal']
         today_total_in_fiat = today['mBal'] * price + today['fmBal']
-        change = "{:+.2f}".format((today_total_in_fiat / yesterday_total_in_fiat - 1) * 100) if yesterday_total_in_fiat > 0 else nan
+        change = "{:+.2f}".format(
+            (today_total_in_fiat / yesterday_total_in_fiat - 1) * 100) if yesterday_total_in_fiat > 0 else nan
     else:
         change = nan
     if change != nan:
@@ -682,7 +689,8 @@ def persist_statistics(stats: Stats):
 
 
 def update_csv(content: dict, filename_csv: str):
-    if not os.path.isfile(filename_csv) or (int(datetime.date.today().strftime("%j")) == 1 and not is_already_written(filename_csv)):
+    if not os.path.isfile(filename_csv) or (
+            int(datetime.date.today().strftime("%j")) == 1 and not is_already_written(filename_csv)):
         write_csv_header(content['labels'], filename_csv)
     write_csv(content['csv'], filename_csv)
 
@@ -826,7 +834,7 @@ def get_wallet_balance(price: float):
                     elif bal['currency'] == CONF.quote:
                         fiat = float(bal['balance'])
                 if fiat > 0:
-                    return crypto + (fiat/price)
+                    return crypto + (fiat / price)
                 return crypto
         else:
             LOG.warning('get_wallet_balance() is not implemented for %s', CONF.exchange)
@@ -1380,7 +1388,8 @@ def meditate(quote: float, price: float):
         target_quote = CONF.crypto_quote_in_percent
     else:
         target_quote = calculate_target_quote()
-    if not CONF.stop_buy and quote < target_quote - CONF.tolerance_in_percent and quote < CONF.max_crypto_quote_in_percent:
+    if not CONF.stop_buy and quote < target_quote - CONF.tolerance_in_percent and (
+            quote < CONF.max_crypto_quote_in_percent or CONF.auto_quote == 'OFF'):
         action['direction'] = 'BUY'
         action['percentage'] = target_quote - quote
         action['price'] = price
@@ -1420,7 +1429,8 @@ def calculate_actual_quote():
             return crypto_quote
         return 0
     crypto_quote = (BAL['cryptoBalance'] / BAL['totalBalanceInCrypto']) * 100 if BAL['cryptoBalance'] > 0 else 0
-    LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, BAL['totalBalanceInCrypto'], BAL['cryptoBalance'], crypto_quote, BAL['price'])
+    LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, BAL['totalBalanceInCrypto'], BAL['cryptoBalance'],
+             crypto_quote, BAL['price'])
     return crypto_quote
 
 
@@ -1439,7 +1449,8 @@ def calculate_balances():
         if not balance['price']:
             balance['price'] = get_current_price()
         if pos['avgEntryPrice']:
-            balance['cryptoBalance'] = (abs(pos['foreignNotional']) / pos['avgEntryPrice'] * balance['price']) / pos['avgEntryPrice']
+            balance['cryptoBalance'] = (abs(pos['foreignNotional']) / pos['avgEntryPrice'] * balance['price']) / pos[
+                'avgEntryPrice']
         return balance
     balance['cryptoBalance'] = get_crypto_balance()['total']
     sleep_for(3, 5)
