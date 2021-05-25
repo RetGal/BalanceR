@@ -45,7 +45,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.8.6'
+            self.bot_version = '0.8.7'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -179,7 +179,7 @@ def function_logger(console_level: int, log_file: str, file_level: int = None):
 
 def fetch_mayer(tries: int = 0):
     try:
-        req = requests.get('https://mayermultiple.info/current.json')
+        req = requests.get('https://bitcoinition.com/current.json')
         if req.text:
             mayer = req.json()['data']
             return {'current': float(mayer['current_mayer_multiple']),
