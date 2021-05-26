@@ -70,11 +70,15 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(10003.3, price)
 
     def test_is_negative_sell_after_none(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = True
         action = {'direction': 'SELL', 'price': 50000}
 
         self.assertFalse(balancer.is_nonprofit_trade(None, action))
 
     def test_is_negative_sell_after_sell(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = True
         last_order = balancer.Order({'side': 'sell', 'id': '1', 'price': 40000, 'amount': 100,
                                      'datetime': datetime.datetime.today().isoformat()})
         action = {'direction': 'SELL', 'price': 50000}
@@ -82,6 +86,8 @@ class BalancerTest(unittest.TestCase):
         self.assertFalse(balancer.is_nonprofit_trade(last_order, action))
 
     def test_is_negative_sell_after_buy(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = True
         last_order = balancer.Order({'side': 'buy', 'id': '1', 'price': 40000, 'amount': 100,
                                      'datetime': datetime.datetime.today().isoformat()})
         action = {'direction': 'SELL', 'price': 50000}
@@ -89,18 +95,40 @@ class BalancerTest(unittest.TestCase):
         self.assertFalse(balancer.is_nonprofit_trade(last_order, action))
 
     def test_is_negative_sell_after_more_expensive_buy(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = True
         last_order = balancer.Order({'side': 'buy', 'id': '1', 'price': 50001, 'amount': 100,
                                      'datetime': datetime.datetime.today().isoformat()})
         action = {'direction': 'SELL', 'price': 50000}
 
         self.assertTrue(balancer.is_nonprofit_trade(last_order, action))
 
+    def test_is_negative_sell_after_more_expensive_buy_with_backtrade_only_on_profit_off(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = False
+        last_order = balancer.Order({'side': 'buy', 'id': '1', 'price': 50001, 'amount': 100,
+                                     'datetime': datetime.datetime.today().isoformat()})
+        action = {'direction': 'SELL', 'price': 50000}
+
+        self.assertFalse(balancer.is_nonprofit_trade(last_order, action))
+
     def test_is_negative_buy_after_cheaper_sell(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = True
         last_order = balancer.Order({'side': 'sell', 'id': '1', 'price': 49999, 'amount': 100,
                                      'datetime': datetime.datetime.today().isoformat()})
         action = {'direction': 'BUY', 'price': 50000}
 
         self.assertTrue(balancer.is_nonprofit_trade(last_order, action))
+
+    def test_is_negative_buy_after_cheaper_sell_with_backtrade_only_on_profit_off(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = False
+        last_order = balancer.Order({'side': 'sell', 'id': '1', 'price': 49999, 'amount': 100,
+                                     'datetime': datetime.datetime.today().isoformat()})
+        action = {'direction': 'BUY', 'price': 50000}
+
+        self.assertFalse(balancer.is_nonprofit_trade(last_order, action))
 
     @patch('balancer.get_open_orders')
     def test_cancel_all_open_orders(self, mock_get_open_orders):
@@ -1071,6 +1099,7 @@ class BalancerTest(unittest.TestCase):
         conf.tolerance_in_percent = 2
         conf.period_in_minutes = 10
         conf.stop_buy = False
+        conf.backtrade_only_on_profit = False
         conf.report = 'T'
         conf.info = ''
         conf.url = 'http://example.org'

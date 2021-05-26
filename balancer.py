@@ -45,7 +45,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.8.7'
+            self.bot_version = '0.8.8'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -65,6 +65,7 @@ class ExchangeConfig:
             self.trade_advantage_in_percent = float(props['trade_advantage_in_percent'])
             self.stop_buy = bool(str(props['stop_buy']).strip('"').lower() == 'true')
             self.max_crypto_quote_in_percent = abs(float(props['max_crypto_quote_in_percent']))
+            self.backtrade_only_on_profit = bool(str(props['backtrade_only_on_profit']).strip('"').lower() == 'true')
             currency = self.pair.split("/")
             self.base = currency[0]
             self.quote = currency[1]
@@ -368,6 +369,9 @@ def create_report_part_settings():
     part['labels'].append("Stop Buy")
     part['mail'].append("Stop buy: {:>25}".format(str('Y' if CONF.stop_buy is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.stop_buy is True else 'N')))
+    part['labels'].append("BT Only On Prof.")
+    part['mail'].append("Backtrade only on profit: {:>9}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
+    part['csv'].append("{}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
     part['labels'].append("Info")
     part['labels'].append("Startdate")
     part['labels'].append("Startprice")
@@ -1471,12 +1475,16 @@ def calculate_used_margin_percentage():
 
 
 def is_nonprofit_trade(last_order: Order, action: dict):
+    if not CONF.backtrade_only_on_profit:
+        return False
     if action['direction'] == 'BUY':
         return last_order and last_order.side.upper() != action['direction'] and last_order.price < action['price']
     return last_order and last_order.side.upper() != action['direction'] and last_order.price > action['price']
 
 
 def last_price(direction: str):
+    if not CONF.backtrade_only_on_profit:
+        return None
     return LAST_ORDER.price if LAST_ORDER and LAST_ORDER.side.upper() != direction else None
 
 
