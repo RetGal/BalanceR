@@ -23,6 +23,7 @@ import requests
 
 MIN_ORDER_SIZE = 0.001
 ORDER = None
+LAST_ORDER = None
 BAL = {'cryptoBalance': 0, 'totalBalanceInCrypto': 0, 'price': 0}
 EMAIL_SENT = False
 EMAIL_ONLY = False
@@ -45,7 +46,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.8.8'
+            self.bot_version = '0.8.9'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1543,7 +1544,8 @@ if __name__ == '__main__':
     if not KEEP_ORDERS:
         cancel_all_open_orders()
 
-    LAST_ORDER = get_closed_order()
+    if CONF.backtrade_only_on_profit:
+        LAST_ORDER = get_closed_order()
 
     while 1:
         BAL = calculate_balances()
@@ -1558,7 +1560,8 @@ if __name__ == '__main__':
             else:
                 ORDER = do_sell(ACTION['percentage'], ACTION['price'], ATTEMPT)
             if ORDER:
-                LAST_ORDER = ORDER
+                if CONF.backtrade_only_on_profit:
+                    LAST_ORDER = ORDER
                 # we need the values after the trade
                 BAL = calculate_balances()
                 do_post_trade_action()
