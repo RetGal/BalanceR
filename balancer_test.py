@@ -289,6 +289,46 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(3, action['percentage'])
         self.assertEqual(10000, action['price'])
 
+    @patch('balancer.calculate_target_quote', return_value=60)
+    @patch('balancer.get_position_info', return_value={'currentQty': 13000})
+    def test_meditate_actual_position_too_high(self, mock_get_position_info, mock_calculate_target_quote):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.base_value = 20000
+
+        action = balancer.meditate(None, 30000)
+
+        self.assertEqual('SELL', action['direction'])
+        self.assertEqual(1000, action['amount'])
+        self.assertEqual(30000, action['price'])
+
+    @patch('balancer.calculate_target_quote', return_value=65)
+    @patch('balancer.get_position_info', return_value={'currentQty': 12000})
+    def test_meditate_actual_position_too_low(self, mock_get_position_info, mock_calculate_target_quote):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.base_value = 20000
+
+        action = balancer.meditate(None, 30000)
+
+        self.assertEqual('BUY', action['direction'])
+        self.assertEqual(1000, action['amount'])
+        self.assertEqual(30000, action['price'])
+
+    @patch('balancer.calculate_target_quote', return_value=61)
+    @patch('balancer.get_position_info', return_value={'currentQty': 12000})
+    def test_meditate_actual_position_too_low_but_within_tolerance(self, mock_get_position_info, mock_calculate_target_quote):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.base_value = 20000
+
+        action = balancer.meditate(None, 30000)
+
+        self.assertIsNone(action)
+
     @patch('balancer.read_daily_average', return_value=1000)
     @patch('balancer.get_current_price', return_value=10000)
     def test_calculate_mayer_high(self, mock_current_price, mock_read_daily_average):
@@ -758,7 +798,7 @@ class BalancerTest(unittest.TestCase):
         mock_kraken.create_limit_sell_order.return_value = {'id': 1, 'price': sell_price, 'amount': amount_crypto,
                                                             'side': 'sell', 'datetime': str(datetime.datetime.utcnow())}
 
-        balancer.create_sell_order(sell_price, amount_crypto)
+        balancer.create_sell_order(sell_price, amount_crypto, None)
 
         mock_kraken.create_limit_sell_order.assert_called_with(balancer.CONF.pair, amount_crypto, sell_price)
 
@@ -774,9 +814,26 @@ class BalancerTest(unittest.TestCase):
         mock_bitmex.create_limit_sell_order.return_value = {'id': 1, 'price': sell_price, 'amount': amount_crypto,
                                                             'side': 'sell', 'datetime': str(datetime.datetime.utcnow())}
 
-        balancer.create_sell_order(sell_price, amount_crypto)
+        balancer.create_sell_order(sell_price, amount_crypto, None)
 
         mock_bitmex.create_limit_sell_order.assert_called_with(balancer.CONF.pair, round(amount_crypto * sell_price), sell_price)
+
+    @patch('balancer.logging')
+    @patch('ccxt.bitmex')
+    def test_create_sell_order_should_call_create_limit_sell_order_with_provided_fiat_amount(self, mock_bitmex, mock_logging):
+        sell_price = 10000
+        amount_fiat = 180
+        balancer.LOG = mock_logging
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.EXCHANGE = mock_bitmex
+        mock_bitmex.create_limit_sell_order.return_value = {'id': 1, 'price': sell_price, 'amount': amount_fiat,
+                                                            'side': 'sell', 'datetime': str(datetime.datetime.utcnow())}
+
+        balancer.create_sell_order(sell_price, None, amount_fiat)
+
+        mock_bitmex.create_limit_sell_order.assert_called_with(balancer.CONF.pair, amount_fiat, sell_price)
+
 
     @patch('balancer.logging')
     @patch('ccxt.kraken')
@@ -789,7 +846,7 @@ class BalancerTest(unittest.TestCase):
         mock_kraken.create_limit_buy_order.return_value = {'id': 1, 'price': buy_price, 'amount': amount_crypto,
                                                            'side': 'sell', 'datetime': str(datetime.datetime.utcnow())}
 
-        balancer.create_buy_order(buy_price, amount_crypto)
+        balancer.create_buy_order(buy_price, amount_crypto, None)
 
         mock_kraken.create_limit_buy_order.assert_called_with(balancer.CONF.pair, amount_crypto, buy_price, {'oflags': 'fcib'})
 
@@ -1084,6 +1141,7 @@ class BalancerTest(unittest.TestCase):
         conf.pair = 'BTC/EUR'
         conf.symbol = 'XBTEUR'
         conf.net_deposits_in_base_currency = 0
+        conf.base_value = 0
         conf.base = 'BTC'
         conf.quote = 'EUR'
         conf.satoshi_factor = 0.00000001
