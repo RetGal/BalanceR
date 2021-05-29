@@ -46,7 +46,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.9.0'
+            self.bot_version = '0.9.1'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -500,6 +500,7 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     append_trading_result(part, today, yesterday, price)
     append_price_change(part, today, price)
     append_actual_quote(part)
+    append_margin_leverage(part)
     part['labels'].append("Position {}".format(CONF.quote))
     used_balance = get_used_balance()
     if used_balance is None:
@@ -647,13 +648,30 @@ def append_price_change(part: dict, today: dict, price: float):
 
 
 def append_actual_quote(part: dict):
-    actual_quote = calculate_actual_quote()
     part['labels'].append("Actual Quote")
+    if CONF.exchange == 'bitmex' and CONF.auto_quote == 'MMRange':
+        actual_position = get_position_info()['currentQty']
+        actual_position = actual_position if actual_position != 0 else 1
+        actual_quote = (CONF.base_value / actual_position) * 100
+    else:
+        actual_quote = calculate_actual_quote()
     if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
         part['mail'].append("Actual quote: {:>21n}%  (Max.)".format(round(actual_quote)))
     else:
         part['mail'].append("Actual quote: {:>21n}%".format(round(actual_quote)))
     part['csv'].append("{:n}%".format(round(actual_quote)))
+
+
+def append_margin_leverage(part: dict):
+    part['labels'].append("Margin Leverage")
+    margin_leverage = get_margin_leverage()
+    if margin_leverage:
+        margin_leverage = round(margin_leverage * 100)
+        part['mail'].append("Margin leverage: {:>18n}%".format(margin_leverage))
+        part['csv'].append("{:n}%".format(margin_leverage))
+    else:
+        part['mail'].append("Margin leverage: {:>18n}".format("% n/a"))
+        part['csv'].append("% n/a".format(margin_leverage))
 
 
 def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats: Stats, update_stats: bool):
@@ -794,7 +812,7 @@ def get_margin_leverage():
             if hasattr(result, 'ml'):
                 return float(result['ml'])
             return 0
-        LOG.error("get_margin_leverage() not yet implemented for %s", CONF.exchange)
+        LOG.warning("get_margin_leverage() not yet implemented for %s", CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
