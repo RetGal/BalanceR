@@ -670,8 +670,8 @@ def append_margin_leverage(part: dict):
         part['mail'].append("Margin leverage: {:>18n}%".format(margin_leverage))
         part['csv'].append("{:n}%".format(margin_leverage))
     else:
-        part['mail'].append("Margin leverage: {:>18n}".format("% n/a"))
-        part['csv'].append("% n/a".format(margin_leverage))
+        part['mail'].append("Margin leverage: {:>18}".format("% n/a"))
+        part['csv'].append("% n/a")
 
 
 def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats: Stats, update_stats: bool):
