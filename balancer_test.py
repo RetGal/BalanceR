@@ -121,6 +121,15 @@ class BalancerTest(unittest.TestCase):
 
         self.assertTrue(balancer.is_nonprofit_trade(last_order, action))
 
+    def test_is_negative_buy_after_market_sell(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = True
+        last_order = balancer.Order({'side': 'sell', 'id': '1', 'amount': 100,
+                                     'datetime': datetime.datetime.today().isoformat()})
+        action = {'direction': 'BUY', 'price': 50000}
+
+        self.assertFalse(balancer.is_nonprofit_trade(last_order, action))
+
     def test_is_negative_buy_after_cheaper_sell_with_backtrade_only_on_profit_off(self):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.backtrade_only_on_profit = False
