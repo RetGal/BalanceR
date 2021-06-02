@@ -46,7 +46,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.9.1'
+            self.bot_version = '0.9.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -885,6 +885,23 @@ def get_wallet_balance(price: float):
         return get_wallet_balance(price)
 
 
+def get_balances():
+    """
+    Fetch the margin and wallet balance in satoshi
+    """
+    try:
+        if CONF.exchange == 'bitmex':
+            return EXCHANGE.fetch_balance()['info'][0]
+        LOG.warning('get_balances() is not implemented for %s', CONF.exchange)
+        return None
+
+    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
+        LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
+        sleep_for(4, 6)
+        return get_balances()
+
+
 def get_open_orders():
     """
     Gets open orders
@@ -1534,13 +1551,17 @@ def calculate_target_quote():
 
 def calculate_actual_quote():
     if CONF.exchange == 'bitmex':
-        position = EXCHANGE.private_get_position()
-        if position:
-            position_fiat = float(position[0]['currentQty'])
-            crypto_quote = (position_fiat / BAL['price'] / BAL['totalBalanceInCrypto']) * 100
-            LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
-            return crypto_quote
-        return 0
+        balances = get_balances()
+        crypto_quote = balances['marginBalance'] / balances['amount'] * 100
+        LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
+        return crypto_quote
+        # position = EXCHANGE.private_get_position()
+        # if position:
+        #     position_fiat = float(position[0]['currentQty'])
+        #     crypto_quote = (position_fiat / BAL['price'] / BAL['totalBalanceInCrypto']) * 100
+        #     LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
+        #     return crypto_quote
+        # return 0
     crypto_quote = (BAL['cryptoBalance'] / BAL['totalBalanceInCrypto']) * 100 if BAL['cryptoBalance'] > 0 else 0
     LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, BAL['totalBalanceInCrypto'], BAL['cryptoBalance'],
              crypto_quote, BAL['price'])

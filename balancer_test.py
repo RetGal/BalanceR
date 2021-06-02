@@ -540,21 +540,16 @@ class BalancerTest(unittest.TestCase):
         self.assertAlmostEqual(99, quote, 2)
 
     @patch('balancer.logging')
-    @patch('ccxt.bitmex')
-    def test_calculate_actual_quote_bitmex(self, mock_bitmex, mock_logger):
+    @patch('balancer.get_balances', return_value={'marginBalance': 36335976, 'amount': 53824800})
+    def test_calculate_actual_quote_bitmex(self, mock_get_balances, mock_logger):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
-        balancer.EXCHANGE = mock_bitmex
         balancer.LOG = mock_logger
-        balancer.BAL['cryptoBalance'] = 0.0544
-        balancer.BAL['totalBalanceInCrypto'] = 0.0411
         balancer.BAL['price'] = 40543
-
-        mock_bitmex.private_get_position.return_value = [{'currentQty': 1934}]
 
         quote = balancer.calculate_actual_quote()
 
-        self.assertAlmostEqual(116.064, quote, 3)
+        self.assertAlmostEqual(67.508, quote, 3)
 
     @patch('balancer.calculate_actual_quote', return_value=48.99)
     def test_append_actual_quote(self, mock_calculate_actual_quote):
