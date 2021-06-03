@@ -46,7 +46,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.9.1'
+            self.bot_version = '1.0.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -54,7 +54,6 @@ class ExchangeConfig:
             self.pair = str(props['pair']).strip('"')
             self.symbol = str(props['symbol']).strip('"')
             self.net_deposits_in_base_currency = abs(float(props['net_deposits_in_base_currency']))
-            self.base_value = abs(int(props['base_value']))
             self.crypto_quote_in_percent = abs(float(props['crypto_quote_in_percent']))
             self.auto_quote = str(props['auto_quote']).strip('"')
             self.mm_quote_0 = abs(float(props['mm_quote_0']))
@@ -104,9 +103,9 @@ class Order:
             self.id = ccxt_order['uuid']
 
         if 'price' in ccxt_order:
-            self.price = ccxt_order['price']
+            self.price = round(ccxt_order['price'])
         elif 'info' in ccxt_order:
-            self.price = ccxt_order['info']['price']
+            self.price = round(ccxt_order['info']['price'])
 
         if 'amount' in ccxt_order:
             self.amount = ccxt_order['amount']
@@ -128,8 +127,7 @@ class Order:
             self.datetime = ccxt_order['info']['created_at']
 
     def __str__(self):
-        return "{} order id: {}, price: {}, amount: {}, created: {}".format(self.side, self.id, round(self.price),
-                                                                            self.amount, self.datetime)
+        return "{} order id: {}, price: {}, amount: {}, created: {}".format(self.side, self.id, self.price, self.amount, self.datetime)
 
 
 class Stats:
@@ -446,22 +444,17 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
     Calculates and appends the absolute and relative overall performance
     """
     part['labels'].append("Deposit {}".format(CONF.base))
-    part['labels'].append("Base Value {}".format(CONF.quote))
     part['labels'].append("Overall Perf. {}".format(CONF.base))
     part['labels'].append("Performance")
     if net_deposits is None:
         part['mail'].append("Net deposits {}: {:>16}".format(CONF.base, 'n/a'))
-        part['mail'].append("Base value in {}: {:>16}".format(CONF.quote, 'n/a' if not CONF.base_value else CONF.base_value))
         part['mail'].append("Overall performance in {}: {:>6} (% n/a)".format(CONF.base, 'n/a'))
         part['csv'].append("n/a")
-        part['csv'].append("{}".format('n/a' if not CONF.base_value else CONF.base_value))
         part['csv'].append("n/a")
         part['csv'].append("% n/a")
     else:
         part['mail'].append("Net deposits {}: {:>19.4f}".format(CONF.base, net_deposits))
         part['csv'].append("{:.4f}".format(net_deposits))
-        part['mail'].append("Base value in {}: {:>16}".format(CONF.quote, 'n/a' if not CONF.base_value else CONF.base_value))
-        part['csv'].append("{}".format('n/a' if not CONF.base_value else CONF.base_value))
         absolute_performance = margin_balance - net_deposits
         if net_deposits > 0 and absolute_performance != 0:
             relative_performance = round(100 / (net_deposits / absolute_performance), 2)
@@ -650,9 +643,11 @@ def append_price_change(part: dict, today: dict, price: float):
 def append_actual_quote(part: dict):
     part['labels'].append("Actual Quote")
     if CONF.exchange == 'bitmex' and CONF.auto_quote == 'MMRange':
-        actual_position = get_position_info()['currentQty']
-        actual_position = actual_position if actual_position != 0 else 1
-        actual_quote = (CONF.base_value / actual_position) * 100
+        # TODO
+        # actual_position = get_position_info()['currentQty']
+        # actual_position = actual_position if actual_position != 0 else 1
+        # actual_quote = (CONF.base_value / actual_position) * 100
+        actual_quote = None
     else:
         actual_quote = calculate_actual_quote()
     if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
@@ -670,8 +665,8 @@ def append_margin_leverage(part: dict):
         part['mail'].append("Margin leverage: {:>18n}%".format(margin_leverage))
         part['csv'].append("{:n}%".format(margin_leverage))
     else:
-        part['mail'].append("Margin leverage: {:>18n}".format("% n/a"))
-        part['csv'].append("% n/a".format(margin_leverage))
+        part['mail'].append("Margin leverage: {:>18}".format("% n/a"))
+        part['csv'].append("% n/a")
 
 
 def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats: Stats, update_stats: bool):
@@ -742,13 +737,14 @@ def is_already_written(filename_csv: str):
     return False
 
 
-def set_base_value(base_value: int):
+def set_start_values():
     config = configparser.ConfigParser(interpolation=None, allow_no_value=True, comment_prefixes="£")
     config.read(INSTANCE + ".txt")
-    config.set('config', 'base_value', str(base_value))
+    # TODO
+    # config.set('config', 'base_value', str(base_value))
     with open(INSTANCE + ".txt", 'w') as config_file:
         config.write(config_file)
-    return base_value
+    return None
 
 
 def get_margin_balance():
@@ -883,6 +879,23 @@ def get_wallet_balance(price: float):
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return get_wallet_balance(price)
+
+
+def get_balances():
+    """
+    Fetch the margin and wallet balance in satoshi
+    """
+    try:
+        if CONF.exchange == 'bitmex':
+            return EXCHANGE.fetch_balance()['info'][0]
+        LOG.warning('get_balances() is not implemented for %s', CONF.exchange)
+        return None
+
+    except (ccxt.ExchangeError, ccxt.NetworkError) as error:
+        handle_account_errors(str(error.args))
+        LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
+        sleep_for(4, 6)
+        return get_balances()
 
 
 def get_open_orders():
@@ -1484,20 +1497,21 @@ def meditate(quote: float, price: float):
     else:
         target_quote = calculate_target_quote()
     if CONF.exchange == 'bitmex' and CONF.auto_quote == 'MMRange':
-        target_position = CONF.base_value * (target_quote / 100)
-        actual_position = get_position_info()['currentQty']
-        if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
-            action['direction'] = 'BUY'
-            action['amount'] = target_position - actual_position
-            action['percentage'] = None
-            action['price'] = price
-            return action
-        if target_position < actual_position * (1 - CONF.tolerance_in_percent / 100):
-            action['direction'] = 'SELL'
-            action['amount'] = actual_position - target_position
-            action['percentage'] = None
-            action['price'] = price
-            return action
+        # TODO
+        # target_position = CONF.base_value * (target_quote / 100)
+        # actual_position = get_position_info()['currentQty']
+        # if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
+        #     action['direction'] = 'BUY'
+        #     action['amount'] = target_position - actual_position
+        #     action['percentage'] = None
+        #     action['price'] = price
+        #     return action
+        # if target_position < actual_position * (1 - CONF.tolerance_in_percent / 100):
+        #     action['direction'] = 'SELL'
+        #     action['amount'] = actual_position - target_position
+        #     action['percentage'] = None
+        #     action['price'] = price
+        #     return action
         return None
     if not CONF.stop_buy and quote < target_quote - CONF.tolerance_in_percent and (
             quote < CONF.max_crypto_quote_in_percent or CONF.auto_quote == 'OFF'):
@@ -1534,13 +1548,17 @@ def calculate_target_quote():
 
 def calculate_actual_quote():
     if CONF.exchange == 'bitmex':
-        position = EXCHANGE.private_get_position()
-        if position:
-            position_fiat = float(position[0]['currentQty'])
-            crypto_quote = (position_fiat / BAL['price'] / BAL['totalBalanceInCrypto']) * 100
-            LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
-            return crypto_quote
-        return 0
+        balances = get_balances()
+        crypto_quote = balances['marginBalance'] / balances['amount'] * 100
+        LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
+        return crypto_quote
+        # position = EXCHANGE.private_get_position()
+        # if position:
+        #     position_fiat = float(position[0]['currentQty'])
+        #     crypto_quote = (position_fiat / BAL['price'] / BAL['totalBalanceInCrypto']) * 100
+        #     LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
+        #     return crypto_quote
+        # return 0
     crypto_quote = (BAL['cryptoBalance'] / BAL['totalBalanceInCrypto']) * 100 if BAL['cryptoBalance'] > 0 else 0
     LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, BAL['totalBalanceInCrypto'], BAL['cryptoBalance'],
              crypto_quote, BAL['price'])
@@ -1651,9 +1669,10 @@ if __name__ == '__main__':
         MIN_ORDER_SIZE = 0.0001
         MIN_FIAT_ORDER_SIZE = 1
         set_leverage(0)
-        if CONF.base_value == 0:
-            BAL = calculate_balances()
-            CONF.base_value = set_base_value(round(BAL['totalBalanceInCrypto'] * BAL['price']))
+        # TODO
+        # if CONF.base_value == 0:
+        #     BAL = calculate_balances()
+        #     CONF.base_value = set_base_value(round(BAL['totalBalanceInCrypto'] * BAL['price']))
 
     if not KEEP_ORDERS:
         cancel_all_open_orders()
