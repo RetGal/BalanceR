@@ -1150,7 +1150,6 @@ class BalancerTest(unittest.TestCase):
         conf.pair = 'BTC/EUR'
         conf.symbol = 'XBTEUR'
         conf.net_deposits_in_base_currency = 0
-        conf.base_value = 0
         conf.base = 'BTC'
         conf.quote = 'EUR'
         conf.satoshi_factor = 0.00000001
