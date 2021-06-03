@@ -104,9 +104,9 @@ class Order:
             self.id = ccxt_order['uuid']
 
         if 'price' in ccxt_order:
-            self.price = ccxt_order['price']
+            self.price = round(ccxt_order['price'])
         elif 'info' in ccxt_order:
-            self.price = ccxt_order['info']['price']
+            self.price = round(ccxt_order['info']['price'])
 
         if 'amount' in ccxt_order:
             self.amount = ccxt_order['amount']
@@ -128,8 +128,7 @@ class Order:
             self.datetime = ccxt_order['info']['created_at']
 
     def __str__(self):
-        return "{} order id: {}, price: {}, amount: {}, created: {}".format(self.side, self.id, round(self.price),
-                                                                            self.amount, self.datetime)
+        return "{} order id: {}, price: {}, amount: {}, created: {}".format(self.side, self.id, self.price, self.amount, self.datetime)
 
 
 class Stats:
