@@ -299,42 +299,39 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(10000, action['price'])
 
     @patch('balancer.calculate_target_quote', return_value=60)
-    @patch('balancer.get_position_info', return_value={'currentQty': 13000})
+    @patch('balancer.get_position_info', return_value={'currentQty': 6000})
     def test_meditate_actual_position_too_high(self, mock_get_position_info, mock_calculate_target_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.auto_quote = 'MMRange'
-        balancer.CONF.base_value = 20000
 
-        action = balancer.meditate(None, 30000)
+        action = balancer.meditate_bitmex(30000)
 
         self.assertEqual('SELL', action['direction'])
-        self.assertEqual(1000, action['amount'])
+        self.assertEqual(2800, action['amount'])
         self.assertEqual(30000, action['price'])
 
     @patch('balancer.calculate_target_quote', return_value=65)
-    @patch('balancer.get_position_info', return_value={'currentQty': 12000})
+    @patch('balancer.get_position_info', return_value={'currentQty': 2000})
     def test_meditate_actual_position_too_low(self, mock_get_position_info, mock_calculate_target_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.auto_quote = 'MMRange'
-        balancer.CONF.base_value = 20000
 
-        action = balancer.meditate(None, 30000)
+        action = balancer.meditate_bitmex(30000)
 
         self.assertEqual('BUY', action['direction'])
-        self.assertEqual(1000, action['amount'])
+        self.assertEqual(1467, action['amount'])
         self.assertEqual(30000, action['price'])
 
     @patch('balancer.calculate_target_quote', return_value=61)
-    @patch('balancer.get_position_info', return_value={'currentQty': 12000})
+    @patch('balancer.get_position_info', return_value={'currentQty': 3200})
     def test_meditate_actual_position_too_low_but_within_tolerance(self, mock_get_position_info, mock_calculate_target_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.auto_quote = 'MMRange'
-        balancer.CONF.base_value = 20000
 
-        action = balancer.meditate(None, 30000)
+        action = balancer.meditate_bitmex(30000)
 
         self.assertIsNone(action)
 
@@ -1149,6 +1146,10 @@ class BalancerTest(unittest.TestCase):
         conf.test = True
         conf.pair = 'BTC/EUR'
         conf.symbol = 'XBTEUR'
+        conf.crypto_price = 20000
+        conf.margin_balance = 0.4
+        conf.position_fiat = 4000
+        conf.mayer_multiple = 1.3
         conf.net_deposits_in_base_currency = 0
         conf.base = 'BTC'
         conf.quote = 'EUR'

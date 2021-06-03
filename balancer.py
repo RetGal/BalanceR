@@ -54,6 +54,10 @@ class ExchangeConfig:
             self.pair = str(props['pair']).strip('"')
             self.symbol = str(props['symbol']).strip('"')
             self.net_deposits_in_base_currency = abs(float(props['net_deposits_in_base_currency']))
+            self.crypto_price = abs(int(props['crypto_price']))
+            self.margin_balance = abs(float(props['margin_balance']))
+            self.position_fiat = abs(int(props['position_fiat']))
+            self.mayer_multiple = abs(float(props['mayer_multiple']))
             self.crypto_quote_in_percent = abs(float(props['crypto_quote_in_percent']))
             self.auto_quote = str(props['auto_quote']).strip('"')
             self.mm_quote_0 = abs(float(props['mm_quote_0']))
@@ -127,7 +131,8 @@ class Order:
             self.datetime = ccxt_order['info']['created_at']
 
     def __str__(self):
-        return "{} order id: {}, price: {}, amount: {}, created: {}".format(self.side, self.id, self.price, self.amount, self.datetime)
+        return "{} order id: {}, price: {}, amount: {}, created: {}".format(self.side, self.id, self.price, self.amount,
+                                                                            self.datetime)
 
 
 class Stats:
@@ -370,7 +375,8 @@ def create_report_part_settings():
     part['mail'].append("Stop buy: {:>25}".format(str('Y' if CONF.stop_buy is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.stop_buy is True else 'N')))
     part['labels'].append("BT Only On Prof.")
-    part['mail'].append("Backtrade only on profit: {:>9}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
+    part['mail'].append(
+        "Backtrade only on profit: {:>9}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
     part['labels'].append("Info")
     part['labels'].append("Startdate")
@@ -737,14 +743,15 @@ def is_already_written(filename_csv: str):
     return False
 
 
-def set_start_values():
+def set_start_values(values: dict):
     config = configparser.ConfigParser(interpolation=None, allow_no_value=True, comment_prefixes="£")
     config.read(INSTANCE + ".txt")
-    # TODO
-    # config.set('config', 'base_value', str(base_value))
+    config.set('config', 'crypto_price', str(values['crypto_price']))
+    config.set('config', 'margin_balance', str(values['margin_balance']))
+    config.set('config', 'position_fiat', str(values['position_fiat']))
+    config.set('config', 'mayer_multiple', str(values['mayer_multiple']))
     with open(INSTANCE + ".txt", 'w') as config_file:
         config.write(config_file)
-    return None
 
 
 def get_margin_balance():
@@ -1300,6 +1307,7 @@ def create_market_sell_order(amount_crypto: float, amount_fiat: float):
     try:
         if CONF.exchange == 'bitmex':
             if not amount_fiat:
+                # TODO round to 100
                 amount_fiat = round(amount_crypto * get_current_price())
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_fiat)
         else:
@@ -1331,6 +1339,7 @@ def create_market_buy_order(amount_crypto: float, amount_fiat: float):
     try:
         if CONF.exchange == 'bitmex':
             if not amount_fiat:
+                # TODO round to 100
                 amount_fiat = round(amount_crypto * get_current_price())
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_fiat)
         elif CONF.exchange == 'kraken':
@@ -1496,23 +1505,6 @@ def meditate(quote: float, price: float):
         target_quote = CONF.crypto_quote_in_percent
     else:
         target_quote = calculate_target_quote()
-    if CONF.exchange == 'bitmex' and CONF.auto_quote == 'MMRange':
-        # TODO
-        # target_position = CONF.base_value * (target_quote / 100)
-        # actual_position = get_position_info()['currentQty']
-        # if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
-        #     action['direction'] = 'BUY'
-        #     action['amount'] = target_position - actual_position
-        #     action['percentage'] = None
-        #     action['price'] = price
-        #     return action
-        # if target_position < actual_position * (1 - CONF.tolerance_in_percent / 100):
-        #     action['direction'] = 'SELL'
-        #     action['amount'] = actual_position - target_position
-        #     action['percentage'] = None
-        #     action['price'] = price
-        #     return action
-        return None
     if not CONF.stop_buy and quote < target_quote - CONF.tolerance_in_percent and (
             quote < CONF.max_crypto_quote_in_percent or CONF.auto_quote == 'OFF'):
         action['direction'] = 'BUY'
@@ -1529,10 +1521,39 @@ def meditate(quote: float, price: float):
     return None
 
 
+def meditate_bitmex(price: float):
+    action = {}
+    if CONF.auto_quote == 'OFF':
+        target_quote = CONF.crypto_quote_in_percent
+    else:
+        target_quote = calculate_target_quote()
+    target_position = (CONF.margin_balance * CONF.crypto_price * (target_quote / 100)) / price * CONF.crypto_price
+    actual_position = get_position_info()['currentQty']
+    if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
+        action['direction'] = 'BUY'
+        # TODO: round to 100
+        action['amount'] = round(target_position - actual_position)
+        action['percentage'] = None
+        action['price'] = price
+        return action
+    if target_position < actual_position * (1 - CONF.tolerance_in_percent / 100):
+        action['direction'] = 'SELL'
+        # TODO: round to 100
+        action['amount'] = round(actual_position - target_position)
+        action['percentage'] = None
+        action['price'] = price
+        return action
+    return None
+
+
 def calculate_target_quote():
     mayer = get_mayer()
     if CONF.auto_quote == 'MM':
-        target_quote = CONF.crypto_quote_in_percent / mayer['current']
+        if CONF.exchange == 'bitmex':
+            target_quote = CONF.mayer_multiple / mayer['current'] * (
+                        CONF.position_fiat / (CONF.margin_balance * CONF.crypto_price)) * 100
+        else:
+            target_quote = CONF.crypto_quote_in_percent / mayer['current']
     elif CONF.auto_quote == 'MMRange':
         target_quote = 100 * (mayer['current'] - CONF.mm_quote_0) / (CONF.mm_quote_100 - CONF.mm_quote_0)
     if target_quote < 0:
@@ -1633,6 +1654,24 @@ def deactivate_bot(message: str):
     sys.exit(0)
 
 
+def init_bitmex():
+    global ORDER
+    start_values = {}
+    balances = get_balances()
+    amount = balances['marginBalance'] * CONF.satoshi_factor * (CONF.crypto_quote_in_percent / 100)
+    mayer = get_mayer()
+    ORDER = create_market_buy_order(amount, None)
+    if ORDER:
+        pos = get_position_info()
+        if pos['avgEntryPrice']:
+            start_values['crypto_price'] = round(pos['avgEntryPrice'])
+            start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
+            start_values['position_fiat'] = round(amount * pos['avgEntryPrice'])
+            start_values['mayer_multiple'] = mayer
+            return start_values
+    return None
+
+
 if __name__ == '__main__':
     print('Starting BalanceR Bot')
     print('ccxt version:', ccxt.__version__)
@@ -1669,10 +1708,11 @@ if __name__ == '__main__':
         MIN_ORDER_SIZE = 0.0001
         MIN_FIAT_ORDER_SIZE = 1
         set_leverage(0)
-        # TODO
-        # if CONF.base_value == 0:
-        #     BAL = calculate_balances()
-        #     CONF.base_value = set_base_value(round(BAL['totalBalanceInCrypto'] * BAL['price']))
+        if CONF.margin_balance == 0:
+            initial_position = init_bitmex()
+            set_start_values(initial_position)
+            CONF = ExchangeConfig()
+            do_post_trade_action()
 
     if not KEEP_ORDERS:
         cancel_all_open_orders()
@@ -1681,8 +1721,11 @@ if __name__ == '__main__':
         LAST_ORDER = get_closed_order()
 
     while 1:
-        BAL = calculate_balances()
-        ACTION = meditate(calculate_actual_quote(), BAL['price'])
+        if CONF.exchange == 'bitmex':
+            ACTION = meditate_bitmex(get_current_price())
+        else:
+            BAL = calculate_balances()
+            ACTION = meditate(calculate_actual_quote(), BAL['price'])
         ATTEMPT: int = 1
         while ACTION:
             if is_nonprofit_trade(LAST_ORDER, ACTION):
@@ -1702,7 +1745,10 @@ if __name__ == '__main__':
             else:
                 daily_report()
                 ATTEMPT += 1
-                BAL = calculate_balances()
-                ACTION = meditate(calculate_actual_quote(), BAL['price'])
+                if CONF.exchange == 'bitmex':
+                    ACTION = meditate_bitmex(get_current_price())
+                else:
+                    BAL = calculate_balances()
+                    ACTION = meditate(calculate_actual_quote(), BAL['price'])
         daily_report()
         sleep_for(CONF.period_in_seconds)

@@ -9,6 +9,12 @@ test = True
 pair = "BTC/USD"
 symbol = "XBTUSD"
 
+# start values
+crypto_price = 0
+margin_balance = 0.0
+position_fiat = 0
+mayer_multiple = 0.0
+
 # bot properties
 net_deposits_in_base_currency = 0
 crypto_quote_in_percent = 50
