@@ -299,6 +299,7 @@ def create_mail_content(daily: bool = False):
         order = ORDER if ORDER else get_closed_order()
         trade_part = create_report_part_trade(order)
     performance_part = create_report_part_performance(daily)
+    start_values_part = create_report_part_start_values()
     advice_part = create_report_part_advice()
     settings_part = create_report_part_settings()
     general_part = create_mail_part_general()
@@ -307,6 +308,7 @@ def create_mail_content(daily: bool = False):
         trade = ["Last trade", "----------", '\n'.join(trade_part['mail']), '\n\n']
     performance = ["Performance", "-----------",
                    '\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
+    start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
     advice = ["Assessment / advice", "-------------------", '\n'.join(advice_part['mail']), '\n\n']
     settings = ["Your settings", "-------------", '\n'.join(settings_part['mail']), '\n\n']
     general = ["General", "-------", '\n'.join(general_part), '\n\n']
@@ -314,23 +316,32 @@ def create_mail_content(daily: bool = False):
     text = '' if daily else '\n'.join(trade)
 
     if not CONF.info:
-        text += '\n'.join(performance) + '\n'.join(advice) + '\n'.join(settings) + '\n'.join(general) + CONF.url + '\n'
+        text += '\n'.join(performance) + '\n'.join(start) + '\n'.join(advice) + '\n'.join(settings) + '\n'.join(
+            general) + CONF.url + '\n'
     else:
-        text += '\n'.join(performance) + '\n'.join(advice) + '\n'.join(settings) + '\n'.join(general) + CONF.info \
-                + '\n\n' + CONF.url + '\n'
+        text += '\n'.join(performance) + '\n'.join(start) + '\n'.join(advice) + '\n'.join(settings) + '\n'.join(
+            general) + CONF.info + '\n\n' + CONF.url + '\n'
 
     csv = None if not daily else "{};{} UTC;{};{};{};{}\n".format(INSTANCE,
                                                                   datetime.datetime.utcnow().replace(microsecond=0),
                                                                   ';'.join(performance_part['csv']),
+                                                                  ';'.join(start_values_part['csv']),
                                                                   ';'.join(advice_part['csv']),
                                                                   ';'.join(settings_part['csv']),
                                                                   CONF.info)
 
     labels = None if not daily else "Bot;Datetime;{};{};{};\n".format(';'.join(performance_part['labels']),
+                                                                      ';'.join(start_values_part['labels']),
                                                                       ';'.join(advice_part['labels']),
                                                                       ';'.join(settings_part['labels']))
 
     return {'text': text, 'csv': csv, 'labels': labels}
+
+
+def create_report_part_start_values():
+    part = {'mail': [], 'csv': [], 'labels': []}
+    # TODO
+    return part
 
 
 def create_report_part_settings():
@@ -648,14 +659,7 @@ def append_price_change(part: dict, today: dict, price: float):
 
 def append_actual_quote(part: dict):
     part['labels'].append("Actual Quote")
-    if CONF.exchange == 'bitmex' and CONF.auto_quote == 'MMRange':
-        # TODO
-        # actual_position = get_position_info()['currentQty']
-        # actual_position = actual_position if actual_position != 0 else 1
-        # actual_quote = (CONF.base_value / actual_position) * 100
-        actual_quote = None
-    else:
-        actual_quote = calculate_actual_quote()
+    actual_quote = calculate_actual_quote()
     if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
         part['mail'].append("Actual quote: {:>21n}%  (Max.)".format(round(actual_quote)))
     else:
@@ -1529,7 +1533,7 @@ def meditate_bitmex(price: float):
     else:
         target_quote = calculate_target_quote()
     target_position = (CONF.start_margin_balance * CONF.start_crypto_price * (
-                target_quote / 100)) / price * CONF.start_crypto_price
+            target_quote / 100)) / price * CONF.start_crypto_price
     actual_position = get_position_info()['currentQty']
     if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
         action['direction'] = 'BUY'
@@ -1575,13 +1579,6 @@ def calculate_actual_quote():
         crypto_quote = balances['marginBalance'] / balances['amount'] * 100
         LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
         return crypto_quote
-        # position = EXCHANGE.private_get_position()
-        # if position:
-        #     position_fiat = float(position[0]['currentQty'])
-        #     crypto_quote = (position_fiat / BAL['price'] / BAL['totalBalanceInCrypto']) * 100
-        #     LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
-        #     return crypto_quote
-        # return 0
     crypto_quote = (BAL['cryptoBalance'] / BAL['totalBalanceInCrypto']) * 100 if BAL['cryptoBalance'] > 0 else 0
     LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, BAL['totalBalanceInCrypto'], BAL['cryptoBalance'],
              crypto_quote, BAL['price'])
@@ -1672,6 +1669,24 @@ def init_bitmex():
             start_values['mayer_multiple'] = mayer
             start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
             return start_values
+        LOG.error('No position after initialization')
+        sys.exit(1)
+    LOG.error('Could not create initial order')
+    sys.exit(1)
+
+
+def re_init_bitmex():
+    start_values = {}
+    balances = get_balances()
+    mayer = get_mayer()
+    pos = get_position_info()
+    if pos['avgEntryPrice']:
+        start_values['crypto_price'] = round(pos['avgEntryPrice'])
+        start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
+        start_values['position_fiat'] = round(pos['currentQty'])
+        start_values['mayer_multiple'] = mayer
+        start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
+        return start_values
     return None
 
 
@@ -1712,10 +1727,16 @@ if __name__ == '__main__':
         MIN_FIAT_ORDER_SIZE = 1
         set_leverage(0)
         if CONF.start_margin_balance == 0:
-            initial_position = init_bitmex()
-            set_start_values(initial_position)
+            if CONF.start_position_fiat == 0:
+                initial_position = init_bitmex()
+                set_start_values(initial_position)
+            else:
+                initial_position = re_init_bitmex()
+                set_start_values(initial_position)
             CONF = ExchangeConfig()
-            do_post_trade_action()
+            if ORDER:
+                BAL = calculate_balances()
+                do_post_trade_action()
 
     if not KEEP_ORDERS:
         cancel_all_open_orders()
