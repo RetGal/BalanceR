@@ -1146,10 +1146,10 @@ class BalancerTest(unittest.TestCase):
         conf.test = True
         conf.pair = 'BTC/EUR'
         conf.symbol = 'XBTEUR'
-        conf.crypto_price = 20000
-        conf.margin_balance = 0.4
-        conf.position_fiat = 4000
-        conf.mayer_multiple = 1.3
+        conf.start_crypto_price = 20000
+        conf.start_margin_balance = 0.4
+        conf.start_position_fiat = 4000
+        conf.start_mayer_multiple = 1.3
         conf.net_deposits_in_base_currency = 0
         conf.base = 'BTC'
         conf.quote = 'EUR'

@@ -54,10 +54,10 @@ class ExchangeConfig:
             self.pair = str(props['pair']).strip('"')
             self.symbol = str(props['symbol']).strip('"')
             self.net_deposits_in_base_currency = abs(float(props['net_deposits_in_base_currency']))
-            self.crypto_price = abs(int(props['crypto_price']))
-            self.margin_balance = abs(float(props['margin_balance']))
-            self.position_fiat = abs(int(props['position_fiat']))
-            self.mayer_multiple = abs(float(props['mayer_multiple']))
+            self.start_crypto_price = abs(int(props['start_crypto_price']))
+            self.start_margin_balance = abs(float(props['start_margin_balance']))
+            self.start_position_fiat = abs(int(props['start_position_fiat']))
+            self.start_mayer_multiple = abs(float(props['start_mayer_multiple']))
             self.crypto_quote_in_percent = abs(float(props['crypto_quote_in_percent']))
             self.auto_quote = str(props['auto_quote']).strip('"')
             self.mm_quote_0 = abs(float(props['mm_quote_0']))
@@ -746,10 +746,10 @@ def is_already_written(filename_csv: str):
 def set_start_values(values: dict):
     config = configparser.ConfigParser(interpolation=None, allow_no_value=True, comment_prefixes="£")
     config.read(INSTANCE + ".txt")
-    config.set('config', 'crypto_price', str(values['crypto_price']))
-    config.set('config', 'margin_balance', str(values['margin_balance']))
-    config.set('config', 'position_fiat', str(values['position_fiat']))
-    config.set('config', 'mayer_multiple', str(values['mayer_multiple']))
+    config.set('config', 'start_crypto_price', str(values['crypto_price']))
+    config.set('config', 'start_margin_balance', str(values['margin_balance']))
+    config.set('config', 'start_position_fiat', str(values['position_fiat']))
+    config.set('config', 'start_mayer_multiple', str(values['mayer_multiple']))
     with open(INSTANCE + ".txt", 'w') as config_file:
         config.write(config_file)
 
@@ -1527,7 +1527,8 @@ def meditate_bitmex(price: float):
         target_quote = CONF.crypto_quote_in_percent
     else:
         target_quote = calculate_target_quote()
-    target_position = (CONF.margin_balance * CONF.crypto_price * (target_quote / 100)) / price * CONF.crypto_price
+    target_position = (CONF.start_margin_balance * CONF.start_crypto_price * (
+                target_quote / 100)) / price * CONF.start_crypto_price
     actual_position = get_position_info()['currentQty']
     if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
         action['direction'] = 'BUY'
@@ -1550,8 +1551,8 @@ def calculate_target_quote():
     mayer = get_mayer()
     if CONF.auto_quote == 'MM':
         if CONF.exchange == 'bitmex':
-            target_quote = CONF.mayer_multiple / mayer['current'] * (
-                        CONF.position_fiat / (CONF.margin_balance * CONF.crypto_price)) * 100
+            target_quote = CONF.start_mayer_multiple / mayer['current'] * (
+                    CONF.start_position_fiat / (CONF.start_margin_balance * CONF.start_crypto_price)) * 100
         else:
             target_quote = CONF.crypto_quote_in_percent / mayer['current']
     elif CONF.auto_quote == 'MMRange':
@@ -1708,7 +1709,7 @@ if __name__ == '__main__':
         MIN_ORDER_SIZE = 0.0001
         MIN_FIAT_ORDER_SIZE = 1
         set_leverage(0)
-        if CONF.margin_balance == 0:
+        if CONF.start_margin_balance == 0:
             initial_position = init_bitmex()
             set_start_values(initial_position)
             CONF = ExchangeConfig()
