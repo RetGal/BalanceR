@@ -1335,7 +1335,7 @@ def create_market_sell_order(amount_crypto: float, amount_fiat: float):
         return create_market_sell_order(amount_crypto, amount_fiat)
 
 
-def create_market_buy_order(amount_crypto: float, amount_fiat: float):
+def create_market_buy_order(amount_crypto: float, amount_fiat: float = None):
     """
     Creates a market buy order
     input: amount_crypto to be bought
@@ -1591,7 +1591,7 @@ def calculate_balances():
         pos = get_position_info()
         if pos['homeNotional'] and pos['homeNotional'] < 0:
             LOG.warning('Position short by %f', abs(pos['homeNotional']))
-            create_market_buy_order(abs(pos['homeNotional']), None)
+            create_market_buy_order(abs(pos['homeNotional']))
             sleep_for(2, 4)
             pos = get_position_info()
         # aka margin balance
@@ -1659,7 +1659,7 @@ def init_bitmex():
     balances = get_balances()
     amount = balances['marginBalance'] * CONF.satoshi_factor * (CONF.crypto_quote_in_percent / 100)
     mayer = get_mayer()
-    ORDER = create_market_buy_order(amount, None)
+    ORDER = create_market_buy_order(amount)
     if ORDER:
         pos = get_position_info()
         if pos['avgEntryPrice']:
