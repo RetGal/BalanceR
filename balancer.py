@@ -750,6 +750,7 @@ def set_start_values(values: dict):
     config.set('config', 'start_margin_balance', str(values['margin_balance']))
     config.set('config', 'start_position_fiat', str(values['position_fiat']))
     config.set('config', 'start_mayer_multiple', str(values['mayer_multiple']))
+    config.set('config', 'start_date', str(values['date']))
     with open(INSTANCE + ".txt", 'w') as config_file:
         config.write(config_file)
 
@@ -1669,6 +1670,7 @@ def init_bitmex():
             start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
             start_values['position_fiat'] = round(amount * pos['avgEntryPrice'])
             start_values['mayer_multiple'] = mayer
+            start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
             return start_values
     return None
 
