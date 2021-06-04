@@ -322,18 +322,18 @@ def create_mail_content(daily: bool = False):
         text += '\n'.join(performance) + '\n'.join(start) + '\n'.join(advice) + '\n'.join(settings) + '\n'.join(
             general) + CONF.info + '\n\n' + CONF.url + '\n'
 
-    csv = None if not daily else "{};{} UTC;{};{};{};{}\n".format(INSTANCE,
-                                                                  datetime.datetime.utcnow().replace(microsecond=0),
-                                                                  ';'.join(performance_part['csv']),
-                                                                  ';'.join(start_values_part['csv']),
-                                                                  ';'.join(advice_part['csv']),
-                                                                  ';'.join(settings_part['csv']),
-                                                                  CONF.info)
+    csv = None if not daily else "{};{} UTC;{};{};{};{};{}\n".format(INSTANCE,
+                                                                     datetime.datetime.utcnow().replace(microsecond=0),
+                                                                     ';'.join(performance_part['csv']),
+                                                                     ';'.join(start_values_part['csv']),
+                                                                     ';'.join(advice_part['csv']),
+                                                                     ';'.join(settings_part['csv']),
+                                                                     CONF.info)
 
-    labels = None if not daily else "Bot;Datetime;{};{};{};\n".format(';'.join(performance_part['labels']),
-                                                                      ';'.join(start_values_part['labels']),
-                                                                      ';'.join(advice_part['labels']),
-                                                                      ';'.join(settings_part['labels']))
+    labels = None if not daily else "Bot;Datetime;{};{};{};{};\n".format(';'.join(performance_part['labels']),
+                                                                         ';'.join(start_values_part['labels']),
+                                                                         ';'.join(advice_part['labels']),
+                                                                         ';'.join(settings_part['labels']))
 
     return {'text': text, 'csv': csv, 'labels': labels}
 
