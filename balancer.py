@@ -103,9 +103,9 @@ class Order:
             self.id = ccxt_order['uuid']
 
         if 'price' in ccxt_order:
-            self.price = round(ccxt_order['price'])
+            self.price = ccxt_order['price'] if not ccxt_order['price'] else round(ccxt_order['price'])
         elif 'info' in ccxt_order:
-            self.price = round(ccxt_order['info']['price'])
+            self.price = ccxt_order['info']['price'] if not ccxt_order['info']['price'] else round(ccxt_order['info']['price'])
 
         if 'amount' in ccxt_order:
             self.amount = ccxt_order['amount']
