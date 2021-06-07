@@ -22,6 +22,7 @@ import ccxt
 import requests
 
 MIN_ORDER_SIZE = 0.001
+MIN_FIAT_ORDER_SIZE = 100
 ORDER = None
 LAST_ORDER = None
 BAL = {'cryptoBalance': 0, 'totalBalanceInCrypto': 0, 'price': 0}
@@ -46,7 +47,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.8.9'
+            self.bot_version = '0.8.A'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1141,8 +1142,10 @@ def create_sell_order(price: float, amount_crypto: float):
     try:
         if CONF.exchange == 'bitmex':
             price = round(price * 2) / 2
-            order_size = round(price * amount_crypto)
-            new_order = EXCHANGE.create_limit_sell_order(CONF.pair, order_size, price)
+            amount_fiat = to_bitmex_amount(amount_crypto * price)
+            if not amount_fiat:
+                return None
+            new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_fiat, price)
         else:
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price)
         norder = Order(new_order)
@@ -1153,7 +1156,7 @@ def create_sell_order(price: float, amount_crypto: float):
         if any(e in str(error.args) for e in STOP_ERRORS):
             not_selling = 'Order submission not possible - not selling %s'
             if CONF.exchange == 'bitmex':
-                LOG.warning(not_selling, order_size)
+                LOG.warning(not_selling, amount_fiat)
             else:
                 LOG.warning(not_selling, amount_crypto)
             return None
@@ -1174,8 +1177,10 @@ def create_buy_order(price: float, amount_crypto: float):
     try:
         if CONF.exchange == 'bitmex':
             price = round(price * 2) / 2
-            order_size = round(price * amount_crypto)
-            new_order = EXCHANGE.create_limit_buy_order(CONF.pair, order_size, price)
+            amount_fiat = to_bitmex_amount(amount_crypto * price)
+            if not amount_fiat:
+                return None
+            new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_fiat, price)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price, {'oflags': 'fcib'})
         else:
@@ -1189,7 +1194,7 @@ def create_buy_order(price: float, amount_crypto: float):
         if any(e in str(error.args) for e in STOP_ERRORS):
             not_buying = 'Order submission not possible - not buying %s'
             if CONF.exchange == 'bitmex':
-                LOG.warning(not_buying, order_size)
+                LOG.warning(not_buying, amount_fiat)
             else:
                 LOG.warning(not_buying, amount_crypto)
             return None
@@ -1206,7 +1211,9 @@ def create_market_sell_order(amount_crypto: float):
     """
     try:
         if CONF.exchange == 'bitmex':
-            amount_fiat = round(amount_crypto * get_current_price())
+            amount_fiat = to_bitmex_amount(amount_crypto * get_current_price())
+            if not amount_fiat:
+                return None
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_fiat)
         else:
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_crypto)
@@ -1231,7 +1238,9 @@ def create_market_buy_order(amount_crypto: float):
     """
     try:
         if CONF.exchange == 'bitmex':
-            amount_fiat = round(amount_crypto * get_current_price())
+            amount_fiat = to_bitmex_amount(amount_crypto * get_current_price())
+            if not amount_fiat:
+                return None
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_fiat)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'oflags': 'fcib'})
@@ -1249,6 +1258,14 @@ def create_market_buy_order(amount_crypto: float):
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
         return create_market_buy_order(amount_crypto)
+
+
+def to_bitmex_amount(amount_fiat: float):
+    size = int(round(amount_fiat, -2))
+    if size >= MIN_FIAT_ORDER_SIZE:
+        return size
+    LOG.info('Order size %f < %f', size, MIN_FIAT_ORDER_SIZE)
+    return None
 
 
 def get_used_balance():

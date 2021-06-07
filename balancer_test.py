@@ -785,7 +785,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.create_sell_order(sell_price, amount_crypto)
 
-        mock_bitmex.create_limit_sell_order.assert_called_with(balancer.CONF.pair, round(amount_crypto * sell_price), sell_price)
+        mock_bitmex.create_limit_sell_order.assert_called_with(balancer.CONF.pair, round(amount_crypto * sell_price, -2), sell_price)
 
     @patch('balancer.logging')
     @patch('ccxt.kraken')
