@@ -124,7 +124,7 @@ class BalancerTest(unittest.TestCase):
     def test_is_negative_buy_after_market_sell(self):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.backtrade_only_on_profit = True
-        last_order = balancer.Order({'side': 'sell', 'id': '1', 'amount': 100,
+        last_order = balancer.Order({'side': 'sell', 'id': '1', 'price': None, 'amount': 100,
                                      'datetime': datetime.datetime.today().isoformat()})
         action = {'direction': 'BUY', 'price': 50000}
 
