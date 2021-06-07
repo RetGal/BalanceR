@@ -56,7 +56,6 @@ class ExchangeConfig:
             self.net_deposits_in_base_currency = abs(float(props['net_deposits_in_base_currency']))
             self.start_crypto_price = abs(int(props['start_crypto_price']))
             self.start_margin_balance = abs(float(props['start_margin_balance']))
-            self.start_position_fiat = abs(int(props['start_position_fiat']))
             self.start_mayer_multiple = abs(float(props['start_mayer_multiple']))
             self.crypto_quote_in_percent = abs(float(props['crypto_quote_in_percent']))
             self.auto_quote = str(props['auto_quote']).strip('"')
@@ -752,7 +751,6 @@ def set_start_values(values: dict):
     config.read(INSTANCE + ".txt")
     config.set('config', 'start_crypto_price', str(values['crypto_price']))
     config.set('config', 'start_margin_balance', str(values['margin_balance']))
-    config.set('config', 'start_position_fiat', str(values['position_fiat']))
     config.set('config', 'start_mayer_multiple', str(values['mayer_multiple']))
     config.set('config', 'start_date', str(values['date']))
     with open(INSTANCE + ".txt", 'w') as config_file:
@@ -1529,11 +1527,10 @@ def meditate(quote: float, price: float):
 def meditate_bitmex(price: float):
     action = {}
     if CONF.auto_quote == 'OFF':
-        target_quote = CONF.crypto_quote_in_percent
+        target_quote = CONF.crypto_quote_in_percent / 100
     else:
-        target_quote = calculate_target_quote()
-    target_position = (CONF.start_margin_balance * CONF.start_crypto_price * (
-            target_quote / 100)) / price * CONF.start_crypto_price
+        target_quote = calculate_target_quote() / 100
+    target_position = CONF.start_margin_balance * CONF.start_crypto_price * target_quote / price * CONF.start_crypto_price
     actual_position = get_position_info()['currentQty']
     if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
         action['direction'] = 'BUY'
@@ -1556,8 +1553,8 @@ def calculate_target_quote():
     mayer = get_mayer()
     if CONF.auto_quote == 'MM':
         if CONF.exchange == 'bitmex':
-            target_quote = CONF.start_mayer_multiple / mayer['current'] * (
-                    CONF.start_position_fiat / (CONF.start_margin_balance * CONF.start_crypto_price)) * 100
+            target_quote = 100 * (CONF.start_mayer_multiple / mayer['current']) * \
+                           (CONF.crypto_quote_in_percent / 100 / CONF.start_mayer_multiple)
         else:
             target_quote = CONF.crypto_quote_in_percent / mayer['current']
     elif CONF.auto_quote == 'MMRange':
@@ -1624,7 +1621,7 @@ def calculate_used_margin_percentage():
 def is_nonprofit_trade(last_order: Order, action: dict):
     if not CONF.backtrade_only_on_profit:
         return False
-    if not hasattr(last_order, 'price'):
+    if not hasattr(last_order, 'price') or not last_order.price:
         return False
     if action['direction'] == 'BUY':
         return last_order and last_order.side.upper() != action['direction'] and last_order.price < action['price']
@@ -1634,7 +1631,7 @@ def is_nonprofit_trade(last_order: Order, action: dict):
 def last_price(direction: str):
     if not CONF.backtrade_only_on_profit:
         return None
-    if not hasattr(LAST_ORDER, 'price'):
+    if not hasattr(LAST_ORDER, 'price') or not LAST_ORDER.price:
         return None
     return LAST_ORDER.price if LAST_ORDER and LAST_ORDER.side.upper() != direction else None
 
@@ -1655,6 +1652,7 @@ def deactivate_bot(message: str):
 
 def init_bitmex():
     global ORDER
+    # TODO
     start_values = {}
     balances = get_balances()
     amount = balances['marginBalance'] * CONF.satoshi_factor * (CONF.crypto_quote_in_percent / 100)
@@ -1665,7 +1663,6 @@ def init_bitmex():
         if pos['avgEntryPrice']:
             start_values['crypto_price'] = round(pos['avgEntryPrice'])
             start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
-            start_values['position_fiat'] = round(amount * pos['avgEntryPrice'])
             start_values['mayer_multiple'] = mayer
             start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
             return start_values
@@ -1683,7 +1680,6 @@ def re_init_bitmex():
     if pos['avgEntryPrice']:
         start_values['crypto_price'] = round(pos['avgEntryPrice'])
         start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
-        start_values['position_fiat'] = round(pos['currentQty'])
         start_values['mayer_multiple'] = mayer
         start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
         return start_values
@@ -1726,11 +1722,13 @@ if __name__ == '__main__':
         MIN_ORDER_SIZE = 0.0001
         MIN_FIAT_ORDER_SIZE = 1
         set_leverage(0)
-        if CONF.start_margin_balance == 0:
-            if CONF.start_position_fiat == 0:
+        if not CONF.start_date:
+            if CONF.start_margin_balance == 0:
+                # TODO
                 initial_position = init_bitmex()
                 set_start_values(initial_position)
             else:
+                # TODO
                 initial_position = re_init_bitmex()
                 set_start_values(initial_position)
             CONF = ExchangeConfig()

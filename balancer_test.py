@@ -124,7 +124,7 @@ class BalancerTest(unittest.TestCase):
     def test_is_negative_buy_after_market_sell(self):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.backtrade_only_on_profit = True
-        last_order = balancer.Order({'side': 'sell', 'id': '1', 'amount': 100,
+        last_order = balancer.Order({'side': 'sell', 'id': '1', 'price': None, 'amount': 100,
                                      'datetime': datetime.datetime.today().isoformat()})
         action = {'direction': 'BUY', 'price': 50000}
 
@@ -161,6 +161,30 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('BUY', action['direction'])
         self.assertEqual(15, action['percentage'])
         self.assertEqual(10000, action['price'])
+
+    @patch('balancer.get_position_info', return_value={'currentQty': 4000})
+    def test_meditate_quote_too_low_bitmex(self, mock_get_position_info):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.start_crypto_price = 30000
+
+        action = balancer.meditate_bitmex(30000)
+
+        self.assertEqual('BUY', action['direction'])
+        self.assertEqual(2000, action['amount'])
+        self.assertEqual(30000, action['price'])
+
+    @patch('balancer.get_position_info', return_value={'currentQty': 6000})
+    def test_meditate_quote_too_high_bitmex(self, mock_get_position_info):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.start_crypto_price = 30000
+
+        action = balancer.meditate_bitmex(32000)
+
+        self.assertEqual('SELL', action['direction'])
+        self.assertEqual(375, action['amount'])
+        self.assertEqual(32000, action['price'])
 
     def test_meditate_quote_too_low_stop_buy_enabled(self):
         balancer.CONF = self.create_default_conf()
@@ -298,31 +322,31 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(3, action['percentage'])
         self.assertEqual(10000, action['price'])
 
-    @patch('balancer.calculate_target_quote', return_value=60)
-    @patch('balancer.get_position_info', return_value={'currentQty': 6000})
+    @patch('balancer.calculate_target_quote', return_value=66.875)
+    @patch('balancer.get_position_info', return_value={'currentQty': 8000})
     def test_meditate_actual_position_too_high(self, mock_get_position_info, mock_calculate_target_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.auto_quote = 'MMRange'
 
-        action = balancer.meditate_bitmex(30000)
+        action = balancer.meditate_bitmex(20000)
 
         self.assertEqual('SELL', action['direction'])
-        self.assertEqual(2800, action['amount'])
-        self.assertEqual(30000, action['price'])
+        self.assertEqual(2650, action['amount'])
+        self.assertEqual(20000, action['price'])
 
-    @patch('balancer.calculate_target_quote', return_value=65)
-    @patch('balancer.get_position_info', return_value={'currentQty': 2000})
+    @patch('balancer.calculate_target_quote', return_value=89.375)
+    @patch('balancer.get_position_info', return_value={'currentQty': 5350})
     def test_meditate_actual_position_too_low(self, mock_get_position_info, mock_calculate_target_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.auto_quote = 'MMRange'
 
-        action = balancer.meditate_bitmex(30000)
+        action = balancer.meditate_bitmex(14580)
 
         self.assertEqual('BUY', action['direction'])
-        self.assertEqual(1467, action['amount'])
-        self.assertEqual(30000, action['price'])
+        self.assertEqual(4458, action['amount'])
+        self.assertEqual(14580, action['price'])
 
     @patch('balancer.calculate_target_quote', return_value=61)
     @patch('balancer.get_position_info', return_value={'currentQty': 3200})
@@ -408,6 +432,94 @@ class BalancerTest(unittest.TestCase):
 
         mock_logger.info.assert_called_with('Auto quote %.2f @ %.2f', target_quote, 0.5)
         self.assertEqual(100, target_quote)
+
+    @patch('balancer.logging')
+    @patch('balancer.get_mayer', return_value={'current': 1.33})
+    def test_calculate_target_quote_mm_bitmex_1(self, mock_mayer, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MM'
+        balancer.CONF.start_mayer_multiple = 0.87
+
+        target_quote = balancer.calculate_target_quote()
+
+        mock_logger.info.assert_called_with('Auto quote %.2f @ %.2f', target_quote, 1.33)
+        self.assertAlmostEqual(37.593984962406, target_quote, 12)
+
+    @patch('balancer.logging')
+    @patch('balancer.get_mayer', return_value={'current': 0.97})
+    def test_calculate_target_quote_mm_bitmex_2(self, mock_mayer, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MM'
+        balancer.CONF.start_mayer_multiple = 0.87
+
+        target_quote = balancer.calculate_target_quote()
+
+        mock_logger.info.assert_called_with('Auto quote %.2f @ %.2f', target_quote, 0.97)
+        self.assertAlmostEqual(51.5463917525773, target_quote, 12)
+
+    @patch('balancer.logging')
+    @patch('balancer.get_mayer', return_value={'current':2.35})
+    def test_calculate_target_quote_mm_bitmex_3(self, mock_mayer, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MM'
+        balancer.CONF.start_mayer_multiple = 0.87
+
+        target_quote = balancer.calculate_target_quote()
+
+        mock_logger.info.assert_called_with('Auto quote %.2f @ %.2f', target_quote, 2.35)
+        self.assertAlmostEqual(21.2765957446808, target_quote, 12)
+
+    @patch('balancer.logging')
+    @patch('balancer.get_mayer', return_value={'current': 1.33})
+    def test_calculate_target_quote_mmrange_bitmex_1(self, mock_mayer, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.mm_quote_0 = 2.4
+        balancer.CONF.mm_quote_100 = 0.8
+
+        target_quote = balancer.calculate_target_quote()
+
+        mock_logger.info.assert_called_with('Auto quote %.2f @ %.2f', target_quote, 1.33)
+        self.assertAlmostEqual(66.8750, target_quote, 12)
+
+    @patch('balancer.logging')
+    @patch('balancer.get_mayer', return_value={'current': 0.97})
+    def test_calculate_target_quote_mmrange_bitmex_2(self, mock_mayer, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.mm_quote_0 = 2.4
+        balancer.CONF.mm_quote_100 = 0.8
+        balancer.CONF.max_crypto_quote_in_percent = 90
+
+        target_quote = balancer.calculate_target_quote()
+
+        mock_logger.info.assert_called_with('Auto quote %.2f @ %.2f', target_quote, 0.97)
+        self.assertAlmostEqual(89.3750, target_quote, 12)
+
+    @patch('balancer.logging')
+    @patch('balancer.get_mayer', return_value={'current': 2.35})
+    def test_calculate_target_quote_mmrange_bitmex_3(self, mock_mayer, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.mm_quote_0 = 2.4
+        balancer.CONF.mm_quote_100 = 0.8
+
+        target_quote = balancer.calculate_target_quote()
+
+        mock_logger.info.assert_called_with('Auto quote %.2f @ %.2f', target_quote, 2.35)
+        self.assertAlmostEqual(3.1250, target_quote, 12)
 
     @patch('balancer.get_mayer', return_value={'current': 3})
     def test_calculate_target_quote_mmrange_high_mayer(self, mock_mayer):
@@ -834,7 +946,6 @@ class BalancerTest(unittest.TestCase):
 
         mock_bitmex.create_limit_sell_order.assert_called_with(balancer.CONF.pair, amount_fiat, sell_price)
 
-
     @patch('balancer.logging')
     @patch('ccxt.kraken')
     def test_create_buy_order_should_call_create_limit_buy_order_with_expected_values(self, mock_kraken, mock_logging):
@@ -1142,7 +1253,6 @@ class BalancerTest(unittest.TestCase):
         conf.symbol = 'XBTEUR'
         conf.start_crypto_price = 20000
         conf.start_margin_balance = 0.4
-        conf.start_position_fiat = 4000
         conf.start_mayer_multiple = 1.3
         conf.start_date = ""
         conf.net_deposits_in_base_currency = 0
