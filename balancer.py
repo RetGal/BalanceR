@@ -1477,7 +1477,7 @@ def calculate_used_margin_percentage():
 def is_nonprofit_trade(last_order: Order, action: dict):
     if not CONF.backtrade_only_on_profit:
         return False
-    if not hasattr(last_order, 'price'):
+    if not hasattr(last_order, 'price') or not last_order.price:
         return False
     if action['direction'] == 'BUY':
         return last_order and last_order.side.upper() != action['direction'] and last_order.price < action['price']
@@ -1487,7 +1487,7 @@ def is_nonprofit_trade(last_order: Order, action: dict):
 def last_price(direction: str):
     if not CONF.backtrade_only_on_profit:
         return None
-    if not hasattr(LAST_ORDER, 'price'):
+    if not hasattr(LAST_ORDER, 'price') or not LAST_ORDER.price:
         return None
     return LAST_ORDER.price if LAST_ORDER and LAST_ORDER.side.upper() != direction else None
 
