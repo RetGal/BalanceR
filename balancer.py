@@ -22,6 +22,7 @@ import ccxt
 import requests
 
 MIN_ORDER_SIZE = 0.001
+MIN_FIAT_ORDER_SIZE = 100
 ORDER = None
 LAST_ORDER = None
 BAL = {'cryptoBalance': 0, 'totalBalanceInCrypto': 0, 'price': 0}
@@ -46,7 +47,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.9.2'
+            self.bot_version = '0.9.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1066,9 +1067,7 @@ def calculate_buy_order_size(reference_quote: float, reference_price: float, act
     quote = reference_quote * (reference_price / actual_price)
     size = BAL['totalBalanceInCrypto'] / (100 / quote) / 1.01
     if CONF.exchange == 'bitmex':
-        # TODO: round to 100
-        # size_in_fiat = int(round(size * actual_price, -2))
-        size_in_fiat = round(size * actual_price)
+        size_in_fiat = int(round(size * actual_price, -2))
         if size_in_fiat < MIN_FIAT_ORDER_SIZE:
             LOG.info('Order size %f < %f', size_in_fiat, MIN_FIAT_ORDER_SIZE)
         return size
@@ -1079,9 +1078,7 @@ def calculate_buy_order_size(reference_quote: float, reference_price: float, act
 
 
 def calculate_order_size(amount_fiat: float):
-    # TODO: round to 100
-    # size = int(round(amount_fiat, -2))
-    size = round(amount_fiat)
+    size = int(round(amount_fiat, -2))
     if size >= MIN_FIAT_ORDER_SIZE:
         return size
     LOG.info('Order size %f < %f', size, MIN_FIAT_ORDER_SIZE)
@@ -1236,6 +1233,9 @@ def create_sell_order(price: float, amount_crypto: float, amount_fiat: float):
         if CONF.exchange == 'bitmex':
             price = round(price * 2) / 2
             order_size = amount_fiat if amount_fiat else round(price * amount_crypto)
+            order_size = calculate_order_size(order_size)
+            if not order_size:
+                return None
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, order_size, price)
         else:
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price)
@@ -1270,6 +1270,9 @@ def create_buy_order(price: float, amount_crypto: float, amount_fiat: float):
         if CONF.exchange == 'bitmex':
             price = round(price * 2) / 2
             order_size = amount_fiat if amount_fiat else round(price * amount_crypto)
+            order_size = calculate_order_size(order_size)
+            if not order_size:
+                return None
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, order_size, price)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price, {'oflags': 'fcib'})
@@ -1304,6 +1307,9 @@ def create_market_sell_order(amount_crypto: float, amount_fiat: float):
         if CONF.exchange == 'bitmex':
             if not amount_fiat:
                 amount_fiat = round(amount_crypto * get_current_price())
+                amount_fiat = calculate_order_size(amount_fiat)
+                if not amount_fiat:
+                    return None
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_fiat)
         else:
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_crypto)
@@ -1335,6 +1341,9 @@ def create_market_buy_order(amount_crypto: float, amount_fiat: float):
         if CONF.exchange == 'bitmex':
             if not amount_fiat:
                 amount_fiat = round(amount_crypto * get_current_price())
+            amount_fiat = calculate_order_size(amount_fiat)
+            if not amount_fiat:
+                return None
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_fiat)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'oflags': 'fcib'})
@@ -1669,7 +1678,6 @@ if __name__ == '__main__':
 
     if CONF.exchange == 'bitmex':
         MIN_ORDER_SIZE = 0.0001
-        MIN_FIAT_ORDER_SIZE = 1
         set_leverage(0)
         if CONF.base_value == 0:
             BAL = calculate_balances()
