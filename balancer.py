@@ -310,7 +310,8 @@ def create_mail_content(daily: bool = False):
         trade = ["Last trade", "----------", '\n'.join(trade_part['mail']), '\n\n']
     performance = ["Performance", "-----------",
                    '\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
-    start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
+    if CONF.exchange == 'bitmex':
+        start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
     advice = ["Assessment / advice", "-------------------", '\n'.join(advice_part['mail']), '\n\n']
     settings = ["Your settings", "-------------", '\n'.join(settings_part['mail']), '\n\n']
     general = ["General", "-------", '\n'.join(general_part), '\n\n']
@@ -346,14 +347,20 @@ def create_report_part_start_values():
     part['labels'].append("Start Margin Bal. {}".format(CONF.base))
     part['labels'].append("Start MM")
     part['labels'].append("Start Date")
-    part['mail'].append("Start price {}: {:>18}".format(CONF.quote, CONF.start_crypto_price))
-    part['mail'].append("Start margin balance {}: {:>9.4f}".format(CONF.base, CONF.start_margin_balance))
-    part['mail'].append("Start MM: {:>25}".format(CONF.start_mayer_multiple))
-    part['mail'].append("Start date: {:>27}".format(CONF.start_date))
-    part['csv'].append("{}".format(CONF.start_crypto_price))
-    part['csv'].append("{}".format(CONF.start_margin_balance))
-    part['csv'].append("{}".format(CONF.start_mayer_multiple))
-    part['csv'].append("{}".format(CONF.start_date))
+    if CONF.exchange == 'bitmex':
+        part['mail'].append("Start price {}: {:>18}".format(CONF.quote, CONF.start_crypto_price))
+        part['mail'].append("Start margin balance {}: {:>9.4f}".format(CONF.base, CONF.start_margin_balance))
+        part['mail'].append("Start MM: {:>25}".format(CONF.start_mayer_multiple))
+        part['mail'].append("Start date: {:>27}".format(CONF.start_date))
+        part['csv'].append("{}".format(CONF.start_crypto_price))
+        part['csv'].append("{}".format(CONF.start_margin_balance))
+        part['csv'].append("{}".format(CONF.start_mayer_multiple))
+        part['csv'].append("{}".format(CONF.start_date))
+    else:
+        part['csv'].append("n/a")
+        part['csv'].append("n/a")
+        part['csv'].append("n/a")
+        part['csv'].append("n/a")
     return part
 
 
