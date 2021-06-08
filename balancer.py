@@ -32,7 +32,7 @@ EMAIL_ONLY = False
 KEEP_ORDERS = False
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price',
-               'nvalid arg']
+               'nvalid arg', 'nvalid orderQty']
 ACCOUNT_ERRORS = ['account has been disabled', 'key is disabled', 'authentication failed', 'permission denied',
                   'invalid api key']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.0.0'
+            self.bot_version = '1.0.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -312,6 +312,8 @@ def create_mail_content(daily: bool = False):
                    '\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
     if CONF.exchange == 'bitmex':
         start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
+    else:
+        start = [];
     advice = ["Assessment / advice", "-------------------", '\n'.join(advice_part['mail']), '\n\n']
     settings = ["Your settings", "-------------", '\n'.join(settings_part['mail']), '\n\n']
     general = ["General", "-------", '\n'.join(general_part), '\n\n']
@@ -775,11 +777,11 @@ def set_start_values(values: dict):
     config.set('config', 'start_crypto_price', str(values['crypto_price']))
     config.set('config', 'start_margin_balance', str(values['margin_balance']))
     config.set('config', 'start_mayer_multiple', str(values['mayer_multiple']))
-    if hasattr(values, 'date') and values.date:
+    if 'date' in values and values['date']:
         config.set('config', 'start_date', str(values['date']))
         LOG.info('Final start position: price: %s, margin: %s, mayer: %s', values['crypto_price'], values['margin_balance'], values['mayer_multiple'])
     else:
-        LOG.info('Initial start position: P: %s MB: %s MM: %s', values['crypto_price'], values['margin_balance'], values['mayer_multiple'])
+        LOG.info('Initial start position: price: %s, margin: %s, mayer: %s', values['crypto_price'], values['margin_balance'], values['mayer_multiple'])
     with open(INSTANCE + ".txt", 'w') as config_file:
         config.write(config_file)
 
@@ -1112,7 +1114,7 @@ def to_bitmex_order_size(amount_fiat: float):
     size = int(round(amount_fiat, -2))
     if size >= MIN_FIAT_ORDER_SIZE:
         return size
-    LOG.info('Order size %f < %f', size, MIN_FIAT_ORDER_SIZE)
+    LOG.info('Order size (%s) %s < %s', amount_fiat, size, MIN_FIAT_ORDER_SIZE)
     return None
 
 
