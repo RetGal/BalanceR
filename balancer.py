@@ -1752,7 +1752,7 @@ if __name__ == '__main__':
         else:
             BAL = calculate_balances()
             ACTION = meditate(calculate_actual_quote(), BAL['price'])
-        ATTEMPT: int = 1 if not INIT else 999
+        ATTEMPT: int = 1 if not INIT else CONF.trade_trials + 1
         while ACTION:
             if is_nonprofit_trade(LAST_ORDER, ACTION):
                 LOG.info('Not %sing @ %s', ACTION['direction'].lower(), ACTION['price'])
