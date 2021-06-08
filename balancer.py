@@ -1787,6 +1787,8 @@ if __name__ == '__main__':
                 ACTION = None
             else:
                 daily_report()
+                if INIT:
+                    sleep_for(CONF.period_in_seconds)
                 ATTEMPT += 1
                 if CONF.exchange == 'bitmex':
                     ACTION = meditate_bitmex(get_current_price())
