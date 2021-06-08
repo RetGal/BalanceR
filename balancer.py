@@ -22,6 +22,8 @@ import ccxt
 import requests
 
 MIN_ORDER_SIZE = 0.001
+MIN_FIAT_ORDER_SIZE = 100
+INIT = False
 ORDER = None
 LAST_ORDER = None
 BAL = {'cryptoBalance': 0, 'totalBalanceInCrypto': 0, 'price': 0}
@@ -57,6 +59,7 @@ class ExchangeConfig:
             self.start_crypto_price = abs(int(props['start_crypto_price']))
             self.start_margin_balance = abs(float(props['start_margin_balance']))
             self.start_mayer_multiple = abs(float(props['start_mayer_multiple']))
+            self.start_date = str(props['start_date']).strip('"')
             self.crypto_quote_in_percent = abs(float(props['crypto_quote_in_percent']))
             self.auto_quote = str(props['auto_quote']).strip('"')
             self.mm_quote_0 = abs(float(props['mm_quote_0']))
@@ -339,7 +342,18 @@ def create_mail_content(daily: bool = False):
 
 def create_report_part_start_values():
     part = {'mail': [], 'csv': [], 'labels': []}
-    # TODO
+    part['labels'].append("Start Price {}".format(CONF.quote))
+    part['labels'].append("Start Margin Bal. {}".format(CONF.base))
+    part['labels'].append("Start MM")
+    part['labels'].append("Start Date")
+    part['mail'].append("Start price {}: {:>18}".format(CONF.quote, CONF.start_crypto_price))
+    part['mail'].append("Start margin balance {}: {:>9}".format(CONF.base, CONF.start_margin_balance))
+    part['mail'].append("Start MM: {:>25}".format(CONF.start_mayer_multiple))
+    part['mail'].append("Start date: {:>27}".format(CONF.start_date))
+    part['csv'].append("{}".format(CONF.start_crypto_price))
+    part['csv'].append("{}".format(CONF.start_margin_balance))
+    part['csv'].append("{}".format(CONF.start_mayer_multiple))
+    part['csv'].append("{}".format(CONF.start_date))
     return part
 
 
@@ -389,8 +403,6 @@ def create_report_part_settings():
         "Backtrade only on profit: {:>9}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
     part['labels'].append("Info")
-    part['labels'].append("Startdate")
-    part['labels'].append("Startprice")
     return part
 
 
@@ -508,7 +520,8 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     append_value_change(part, today, yesterday, price)
     append_trading_result(part, today, yesterday, price)
     append_price_change(part, today, price)
-    append_actual_quote(part)
+    if CONF.exchange != 'bitmex':
+        append_actual_quote(part)
     append_margin_leverage(part)
     part['labels'].append("Position {}".format(CONF.quote))
     used_balance = get_used_balance()
@@ -747,12 +760,16 @@ def is_already_written(filename_csv: str):
 
 
 def set_start_values(values: dict):
-    config = configparser.ConfigParser(interpolation=None, allow_no_value=True, comment_prefixes="£")
+    config = configparser.ConfigParser(interpolation=None, allow_no_value=True, comment_prefixes="£", strict=False)
     config.read(INSTANCE + ".txt")
     config.set('config', 'start_crypto_price', str(values['crypto_price']))
     config.set('config', 'start_margin_balance', str(values['margin_balance']))
     config.set('config', 'start_mayer_multiple', str(values['mayer_multiple']))
-    config.set('config', 'start_date', str(values['date']))
+    if hasattr(values, 'date') and values.date:
+        config.set('config', 'start_date', str(values['date']))
+        LOG.info('Final start position: price: %s, margin: %s, mayer: %s', values['crypto_price'], values['margin_balance'], values['mayer_multiple'])
+    else:
+        LOG.info('Initial start position: P: %s MB: %s MM: %s', values['crypto_price'], values['margin_balance'], values['mayer_multiple'])
     with open(INSTANCE + ".txt", 'w') as config_file:
         config.write(config_file)
 
@@ -1024,7 +1041,7 @@ def do_buy(quote: float, amount: float, reference_price: float, attempt: int):
         if quote:
             order_size_crypto = calculate_buy_order_size(quote, reference_price, buy_price)
         elif amount:
-            order_size_fiat = calculate_order_size(amount)
+            order_size_fiat = to_bitmex_order_size(amount)
         if order_size_crypto is None and order_size_fiat is None:
             LOG.info('Buy order size below minimum')
             sleep_for(30, 50)
@@ -1047,7 +1064,7 @@ def do_buy(quote: float, amount: float, reference_price: float, attempt: int):
     if quote:
         order_size_crypto = calculate_buy_order_size(quote, reference_price, get_current_price())
     elif amount:
-        order_size_fiat = calculate_order_size(amount)
+        order_size_fiat = to_bitmex_order_size(amount)
     if order_size_crypto is None and order_size_fiat is None:
         return None
     return create_market_buy_order(order_size_crypto, order_size_fiat)
@@ -1072,23 +1089,17 @@ def calculate_buy_order_size(reference_quote: float, reference_price: float, act
     """
     quote = reference_quote * (reference_price / actual_price)
     size = BAL['totalBalanceInCrypto'] / (100 / quote) / 1.01
-    if CONF.exchange == 'bitmex':
-        # TODO: round to 100
-        # size_in_fiat = int(round(size * actual_price, -2))
-        size_in_fiat = round(size * actual_price)
-        if size_in_fiat < MIN_FIAT_ORDER_SIZE:
-            LOG.info('Order size %f < %f', size_in_fiat, MIN_FIAT_ORDER_SIZE)
-        return size
     if size > MIN_ORDER_SIZE:
         return round(size - 0.000000006, 8)
     LOG.info('Order size %f < %f', size, MIN_ORDER_SIZE)
     return None
 
 
-def calculate_order_size(amount_fiat: float):
-    # TODO: round to 100
-    # size = int(round(amount_fiat, -2))
-    size = round(amount_fiat)
+def to_bitmex_order_size(amount_fiat: float):
+    if CONF.exchange != 'bitmex':
+        LOG.warning('to_bitmex_order_size is intended for bitmex only')
+        return None
+    size = int(round(amount_fiat, -2))
     if size >= MIN_FIAT_ORDER_SIZE:
         return size
     LOG.info('Order size %f < %f', size, MIN_FIAT_ORDER_SIZE)
@@ -1113,7 +1124,7 @@ def do_sell(quote: float, amount: float, reference_price: float, attempt: int):
         if quote:
             order_size_crypto = calculate_sell_order_size(quote, reference_price, sell_price)
         elif amount:
-            order_size_fiat = calculate_order_size(amount)
+            order_size_fiat = to_bitmex_order_size(amount)
         if order_size_crypto is None and order_size_fiat is None:
             LOG.info('Sell order size below minimum')
             sleep_for(30, 50)
@@ -1136,7 +1147,7 @@ def do_sell(quote: float, amount: float, reference_price: float, attempt: int):
     if quote:
         order_size_crypto = calculate_sell_order_size(quote, reference_price, get_current_price())
     elif amount:
-        order_size_fiat = calculate_order_size(amount)
+        order_size_fiat = to_bitmex_order_size(amount)
     if order_size_crypto is None and order_size_fiat is None:
         return None
     return create_market_sell_order(order_size_crypto, order_size_fiat)
@@ -1242,8 +1253,12 @@ def create_sell_order(price: float, amount_crypto: float, amount_fiat: float):
     try:
         if CONF.exchange == 'bitmex':
             price = round(price * 2) / 2
-            order_size = amount_fiat if amount_fiat else round(price * amount_crypto)
-            new_order = EXCHANGE.create_limit_sell_order(CONF.pair, order_size, price)
+            if not amount_fiat:
+                amount_fiat = amount_crypto * price
+            amount_fiat = to_bitmex_order_size(amount_fiat)
+            if not amount_fiat:
+                return None
+            new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_fiat, price)
         else:
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price)
         norder = Order(new_order)
@@ -1254,7 +1269,7 @@ def create_sell_order(price: float, amount_crypto: float, amount_fiat: float):
         if any(e in str(error.args) for e in STOP_ERRORS):
             not_selling = 'Order submission not possible - not selling %s'
             if CONF.exchange == 'bitmex':
-                LOG.warning(not_selling, order_size)
+                LOG.warning(not_selling, amount_fiat)
             else:
                 LOG.warning(not_selling, amount_crypto)
             return None
@@ -1276,8 +1291,12 @@ def create_buy_order(price: float, amount_crypto: float, amount_fiat: float):
     try:
         if CONF.exchange == 'bitmex':
             price = round(price * 2) / 2
-            order_size = amount_fiat if amount_fiat else round(price * amount_crypto)
-            new_order = EXCHANGE.create_limit_buy_order(CONF.pair, order_size, price)
+            if not amount_fiat:
+                amount_fiat = amount_crypto * price
+            amount_fiat = to_bitmex_order_size(amount_fiat)
+            if not amount_fiat:
+                return None
+            new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_fiat, price)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price, {'oflags': 'fcib'})
         else:
@@ -1291,7 +1310,7 @@ def create_buy_order(price: float, amount_crypto: float, amount_fiat: float):
         if any(e in str(error.args) for e in STOP_ERRORS):
             not_buying = 'Order submission not possible - not buying %s'
             if CONF.exchange == 'bitmex':
-                LOG.warning(not_buying, order_size)
+                LOG.warning(not_buying, amount_fiat)
             else:
                 LOG.warning(not_buying, amount_crypto)
             return None
@@ -1310,8 +1329,10 @@ def create_market_sell_order(amount_crypto: float, amount_fiat: float):
     try:
         if CONF.exchange == 'bitmex':
             if not amount_fiat:
-                # TODO round to 100
-                amount_fiat = round(amount_crypto * get_current_price())
+                amount_fiat = amount_crypto * get_current_price()
+            amount_fiat = to_bitmex_order_size(amount_fiat)
+            if not amount_fiat:
+                return None
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_fiat)
         else:
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_crypto)
@@ -1342,8 +1363,10 @@ def create_market_buy_order(amount_crypto: float, amount_fiat: float = None):
     try:
         if CONF.exchange == 'bitmex':
             if not amount_fiat:
-                # TODO round to 100
-                amount_fiat = round(amount_crypto * get_current_price())
+                amount_fiat = amount_crypto * get_current_price()
+            amount_fiat = to_bitmex_order_size(amount_fiat)
+            if not amount_fiat:
+                return None
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_fiat)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'oflags': 'fcib'})
@@ -1534,14 +1557,12 @@ def meditate_bitmex(price: float):
     actual_position = get_position_info()['currentQty']
     if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
         action['direction'] = 'BUY'
-        # TODO: round to 100
         action['amount'] = round(target_position - actual_position)
         action['percentage'] = None
         action['price'] = price
         return action
     if target_position < actual_position * (1 - CONF.tolerance_in_percent / 100):
         action['direction'] = 'SELL'
-        # TODO: round to 100
         action['amount'] = round(actual_position - target_position)
         action['percentage'] = None
         action['price'] = price
@@ -1572,10 +1593,12 @@ def calculate_target_quote():
 
 def calculate_actual_quote():
     if CONF.exchange == 'bitmex':
-        balances = get_balances()
-        crypto_quote = balances['marginBalance'] / balances['amount'] * 100
-        LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
-        return crypto_quote
+        LOG.warning('calculate_actual_quote() is not intended for bitmex')
+        return None
+        # balances = get_balances()
+        # crypto_quote = balances['marginBalance'] / balances['amount'] * 100
+        # LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
+        # return crypto_quote
     crypto_quote = (BAL['cryptoBalance'] / BAL['totalBalanceInCrypto']) * 100 if BAL['cryptoBalance'] > 0 else 0
     LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, BAL['totalBalanceInCrypto'], BAL['cryptoBalance'],
              crypto_quote, BAL['price'])
@@ -1651,28 +1674,17 @@ def deactivate_bot(message: str):
 
 
 def init_bitmex():
-    global ORDER
-    # TODO
     start_values = {}
     balances = get_balances()
-    amount = balances['marginBalance'] * CONF.satoshi_factor * (CONF.crypto_quote_in_percent / 100)
     mayer = get_mayer()
-    ORDER = create_market_buy_order(amount)
-    if ORDER:
-        pos = get_position_info()
-        if pos['avgEntryPrice']:
-            start_values['crypto_price'] = round(pos['avgEntryPrice'])
-            start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
-            start_values['mayer_multiple'] = mayer
-            start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
-            return start_values
-        LOG.error('No position after initialization')
-        sys.exit(1)
-    LOG.error('Could not create initial order')
-    sys.exit(1)
+    price = get_current_price()
+    start_values['crypto_price'] = round(price)
+    start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
+    start_values['mayer_multiple'] = mayer['current']
+    return start_values
 
 
-def re_init_bitmex():
+def finit_bitmex():
     start_values = {}
     balances = get_balances()
     mayer = get_mayer()
@@ -1680,7 +1692,7 @@ def re_init_bitmex():
     if pos['avgEntryPrice']:
         start_values['crypto_price'] = round(pos['avgEntryPrice'])
         start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
-        start_values['mayer_multiple'] = mayer
+        start_values['mayer_multiple'] = mayer['current']
         start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
         return start_values
     return None
@@ -1720,26 +1732,18 @@ if __name__ == '__main__':
 
     if CONF.exchange == 'bitmex':
         MIN_ORDER_SIZE = 0.0001
-        MIN_FIAT_ORDER_SIZE = 1
         set_leverage(0)
         if not CONF.start_date:
-            if CONF.start_margin_balance == 0:
-                # TODO
+            if not CONF.start_margin_balance:
                 initial_position = init_bitmex()
                 set_start_values(initial_position)
-            else:
-                # TODO
-                initial_position = re_init_bitmex()
-                set_start_values(initial_position)
-            CONF = ExchangeConfig()
-            if ORDER:
-                BAL = calculate_balances()
-                do_post_trade_action()
+                CONF = ExchangeConfig()
+            INIT = True
 
     if not KEEP_ORDERS:
         cancel_all_open_orders()
 
-    if CONF.backtrade_only_on_profit:
+    if not INIT and CONF.backtrade_only_on_profit:
         LAST_ORDER = get_closed_order()
 
     while 1:
@@ -1748,7 +1752,7 @@ if __name__ == '__main__':
         else:
             BAL = calculate_balances()
             ACTION = meditate(calculate_actual_quote(), BAL['price'])
-        ATTEMPT: int = 1
+        ATTEMPT: int = 1 if not INIT else 999
         while ACTION:
             if is_nonprofit_trade(LAST_ORDER, ACTION):
                 LOG.info('Not %sing @ %s', ACTION['direction'].lower(), ACTION['price'])
@@ -1758,6 +1762,13 @@ if __name__ == '__main__':
             else:
                 ORDER = do_sell(ACTION['percentage'], ACTION['amount'], ACTION['price'], ATTEMPT)
             if ORDER:
+                if INIT:
+                    start_position = finit_bitmex()
+                    if start_position:
+                        set_start_values(start_position)
+                        CONF = ExchangeConfig()
+                        INIT = False
+                        ATTEMPT = 1
                 if CONF.backtrade_only_on_profit:
                     LAST_ORDER = ORDER
                 # we need the values after the trade

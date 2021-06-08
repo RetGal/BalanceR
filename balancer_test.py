@@ -655,9 +655,7 @@ class BalancerTest(unittest.TestCase):
         balancer.CONF.exchange = 'bitmex'
         balancer.LOG = mock_logger
 
-        quote = balancer.calculate_actual_quote()
-
-        self.assertAlmostEqual(120.668, quote, 3)
+        self.assertIsNone(balancer.calculate_actual_quote())
 
     @patch('balancer.calculate_actual_quote', return_value=48.99)
     def test_append_actual_quote(self, mock_calculate_actual_quote):
@@ -928,7 +926,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.create_sell_order(sell_price, amount_crypto, None)
 
-        mock_bitmex.create_limit_sell_order.assert_called_with(balancer.CONF.pair, round(amount_crypto * sell_price), sell_price)
+        mock_bitmex.create_limit_sell_order.assert_called_with(balancer.CONF.pair, round(amount_crypto * sell_price, -2), sell_price)
 
     @patch('balancer.logging')
     @patch('ccxt.bitmex')
@@ -944,7 +942,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.create_sell_order(sell_price, None, amount_fiat)
 
-        mock_bitmex.create_limit_sell_order.assert_called_with(balancer.CONF.pair, amount_fiat, sell_price)
+        mock_bitmex.create_limit_sell_order.assert_called_with(balancer.CONF.pair, round(amount_fiat, -2), sell_price)
 
     @patch('balancer.logging')
     @patch('ccxt.kraken')
