@@ -347,7 +347,7 @@ def create_report_part_start_values():
     part['labels'].append("Start MM")
     part['labels'].append("Start Date")
     part['mail'].append("Start price {}: {:>18}".format(CONF.quote, CONF.start_crypto_price))
-    part['mail'].append("Start margin balance {}: {:>9}".format(CONF.base, CONF.start_margin_balance))
+    part['mail'].append("Start margin balance {}: {:>9.4f}".format(CONF.base, CONF.start_margin_balance))
     part['mail'].append("Start MM: {:>25}".format(CONF.start_mayer_multiple))
     part['mail'].append("Start date: {:>27}".format(CONF.start_date))
     part['csv'].append("{}".format(CONF.start_crypto_price))
@@ -475,23 +475,23 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
     part['labels'].append("Overall Perf. {}".format(CONF.base))
     part['labels'].append("Performance")
     if net_deposits is None:
-        part['mail'].append("Net deposits {}: {:>16}".format(CONF.base, 'n/a'))
-        part['mail'].append("Overall performance in {}: {:>6} (% n/a)".format(CONF.base, 'n/a'))
+        part['mail'].append("Net deposits {}: {:>14}".format(CONF.base, 'n/a'))
+        part['mail'].append("Overall performance in {}: {:>4} (% n/a)".format(CONF.base, 'n/a'))
         part['csv'].append("n/a")
         part['csv'].append("n/a")
         part['csv'].append("% n/a")
     else:
-        part['mail'].append("Net deposits {}: {:>19.4f}".format(CONF.base, net_deposits))
+        part['mail'].append("Net deposits {}: {:>17.4f}".format(CONF.base, net_deposits))
         part['csv'].append("{:.4f}".format(net_deposits))
         absolute_performance = margin_balance - net_deposits
         if net_deposits > 0 and absolute_performance != 0:
             relative_performance = round(100 / (net_deposits / absolute_performance), 2)
-            part['mail'].append("Overall performance in {}: {:>+9.4f} ({:+.2f}%)".format(CONF.base,
+            part['mail'].append("Overall performance in {}: {:>+7.4f} ({:+.2f}%)".format(CONF.base,
                                                                                          absolute_performance,
                                                                                          relative_performance))
             part['csv'].append("{:.4f};{:+.2f}%".format(absolute_performance, relative_performance))
         else:
-            part['mail'].append("Overall performance in {}: {:>+9.4f} (% n/a)".format(CONF.base, absolute_performance))
+            part['mail'].append("Overall performance in {}: {:>+7.4f} (% n/a)".format(CONF.base, absolute_performance))
             part['csv'].append("{:.4f};% n/a".format(absolute_performance))
 
 
@@ -520,8 +520,7 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     append_value_change(part, today, yesterday, price)
     append_trading_result(part, today, yesterday, price)
     append_price_change(part, today, price)
-    if CONF.exchange != 'bitmex':
-        append_actual_quote(part)
+    append_actual_quote(part)
     append_margin_leverage(part)
     part['labels'].append("Position {}".format(CONF.quote))
     used_balance = get_used_balance()
@@ -538,10 +537,10 @@ def append_wallet_balance(part: dict, price: float):
     wallet_balance = get_wallet_balance(price)
     part['labels'].append("Wallet {}".format(CONF.base))
     if wallet_balance is None:
-        part['mail'].append("Wallet balance {}: {:>14}".format(CONF.base, 'n/a'))
+        part['mail'].append("Wallet balance {}: {:>12}".format(CONF.base, 'n/a'))
         part['csv'].append("n/a")
     else:
-        part['mail'].append("Wallet balance {}: {:>17.4f}".format(CONF.base, wallet_balance))
+        part['mail'].append("Wallet balance {}: {:>15.4f}".format(CONF.base, wallet_balance))
         part['csv'].append("{:.4f}".format(wallet_balance))
 
 
@@ -567,7 +566,7 @@ def append_margin_change(part: dict, today: dict):
     part['labels'].append("Change")
     part['labels'].append("Margin {}".format(CONF.quote))
     part['labels'].append("Change")
-    m_bal = "Margin balance {}: {:>17.4f}".format(CONF.base, today['mBal'])
+    m_bal = "Margin balance {}: {:>15.4f}".format(CONF.base, today['mBal'])
     if 'mBalChan24' in today:
         change = "{:+.2f}%".format(today['mBalChan24'])
         m_bal += " ("
@@ -671,12 +670,16 @@ def append_price_change(part: dict, today: dict, price: float):
 
 def append_actual_quote(part: dict):
     part['labels'].append("Actual Quote")
-    actual_quote = calculate_actual_quote()
-    if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
-        part['mail'].append("Actual quote: {:>21n}%  (Max.)".format(round(actual_quote)))
+    if CONF.exchange == 'bitmex':
+        part['mail'].append("Actual quote: {:>21s}".format("n/a"))
+        part['csv'].append("n/a")
     else:
-        part['mail'].append("Actual quote: {:>21n}%".format(round(actual_quote)))
-    part['csv'].append("{:n}%".format(round(actual_quote)))
+        actual_quote = calculate_actual_quote()
+        if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
+            part['mail'].append("Actual quote: {:>21n}%  (Max.)".format(round(actual_quote)))
+        else:
+            part['mail'].append("Actual quote: {:>21n}%".format(round(actual_quote)))
+        part['csv'].append("{:n}%".format(round(actual_quote)))
 
 
 def append_margin_leverage(part: dict):
