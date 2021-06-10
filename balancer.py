@@ -407,7 +407,7 @@ def create_report_part_settings():
     part['labels'].append("Stop Buy")
     part['mail'].append("Stop buy: {:>25}".format(str('Y' if CONF.stop_buy is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.stop_buy is True else 'N')))
-    part['labels'].append("BT Only On Prof.")
+    part['labels'].append("Backtrade Only Profit")
     part['mail'].append(
         "Backtrade only on profit: {:>9}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
@@ -692,7 +692,7 @@ def append_actual_quote(part: dict):
 
 
 def append_margin_leverage(part: dict):
-    part['labels'].append("Margin Leverage")
+    part['labels'].append("Leverage")
     margin_leverage = get_margin_leverage()
     if margin_leverage:
         margin_leverage = round(margin_leverage * 100)
