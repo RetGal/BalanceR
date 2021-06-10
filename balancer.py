@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.0.2'
+            self.bot_version = '1.0.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -345,8 +345,8 @@ def create_mail_content(daily: bool = False):
 
 def create_report_part_start_values():
     part = {'mail': [], 'csv': [], 'labels': []}
-    part['labels'].append("Start Price {}".format(CONF.quote))
-    part['labels'].append("Start Margin Bal. {}".format(CONF.base))
+    part['labels'].append("Start Price")
+    part['labels'].append("Start Margin")
     part['labels'].append("Start MM")
     part['labels'].append("Start Date")
     if CONF.exchange == 'bitmex':
@@ -1690,12 +1690,12 @@ def init_bitmex():
     start_values = {}
     balances = get_balances()
     mayer = get_mayer()
-    # pos = get_position_info()
-    # if pos['avgEntryPrice']:
-    #     start_values['crypto_price'] = round(pos['avgEntryPrice'])
-    # else:
-    price = get_current_price()
-    start_values['crypto_price'] = round(price)
+    pos = get_position_info()
+    if pos['avgEntryPrice']:
+        start_values['crypto_price'] = round(pos['avgEntryPrice'])
+    else:
+        price = get_current_price()
+        start_values['crypto_price'] = round(price)
     start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
     start_values['mayer_multiple'] = mayer['current']
     return start_values
