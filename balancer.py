@@ -259,7 +259,7 @@ def daily_report(immediately: bool = False):
     global EMAIL_SENT
 
     now = datetime.datetime.utcnow()
-    if immediately or datetime.datetime(2012, 1, 17, 12, 22).time() > now.time() \
+    if immediately or datetime.datetime(2012, 1, 17, 12, 25).time() > now.time() \
             > datetime.datetime(2012, 1, 17, 12, 1).time() and EMAIL_SENT != now.day:
         content = create_mail_content(True)
         filename_csv = INSTANCE + '.csv'
@@ -1115,6 +1115,7 @@ def to_bitmex_order_size(amount_fiat: float):
     if size >= MIN_FIAT_ORDER_SIZE:
         return size
     LOG.info('Order size (%s) %s < %s', amount_fiat, size, MIN_FIAT_ORDER_SIZE)
+    sleep_for(30, 50)
     return None
 
 
@@ -1689,6 +1690,10 @@ def init_bitmex():
     start_values = {}
     balances = get_balances()
     mayer = get_mayer()
+    # pos = get_position_info()
+    # if pos['avgEntryPrice']:
+    #     start_values['crypto_price'] = round(pos['avgEntryPrice'])
+    # else:
     price = get_current_price()
     start_values['crypto_price'] = round(price)
     start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
