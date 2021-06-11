@@ -648,14 +648,27 @@ class BalancerTest(unittest.TestCase):
 
         self.assertAlmostEqual(99, quote, 2)
 
-    @patch('balancer.logging')
-    @patch('balancer.get_balances', return_value={'marginBalance': 9925083, 'amount': 8225083})
-    def test_calculate_actual_quote_bitmex(self, mock_get_balances, mock_logger):
+    @patch('balancer.get_position_info', return_value={'currentQty': 20000})
+    def test_calculate_actual_quote_bitmex_max(self, mock_get_position_info):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
-        balancer.LOG = mock_logger
+        balancer.CONF.start_crypto_price = 40000
+        balancer.CONF.start_margin_balance = 0.5
 
-        self.assertIsNone(balancer.calculate_actual_quote())
+        quote = balancer.calculate_actual_quote(40000)
+
+        self.assertEqual(100, quote)
+
+    @patch('balancer.get_position_info', return_value={'currentQty': 10000})
+    def test_calculate_actual_quote_bitmex(self, mock_get_position_info):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.start_crypto_price = 40000
+        balancer.CONF.start_margin_balance = 0.5
+
+        quote = balancer.calculate_actual_quote(60000)
+
+        self.assertEqual(75, quote)
 
     @patch('balancer.calculate_actual_quote', return_value=48.99)
     def test_append_actual_quote(self, mock_calculate_actual_quote):

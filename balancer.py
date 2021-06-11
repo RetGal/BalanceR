@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.0.3'
+            self.bot_version = '1.0.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -529,7 +529,7 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     append_value_change(part, today, yesterday, price)
     append_trading_result(part, today, yesterday, price)
     append_price_change(part, today, price)
-    append_actual_quote(part)
+    append_actual_quote(part, price)
     append_margin_leverage(part)
     part['labels'].append("Position {}".format(CONF.quote))
     used_balance = get_used_balance()
@@ -589,7 +589,7 @@ def append_margin_change(part: dict, today: dict):
     fm_bal = "Margin balance {}: {:>15}".format(CONF.quote, round(today['fmBal']))
     if 'fmBalChan24' in today:
         change = "{:+.2f}%".format(today['fmBalChan24'])
-        fm_bal += "   ("
+        fm_bal += " ("
         fm_bal += change
         fm_bal += ")*"
     else:
@@ -668,7 +668,7 @@ def append_price_change(part: dict, today: dict, price: float):
     rate = "{} price {}: {:>20}".format(CONF.base, CONF.quote, round(price))
     if 'priceChan24' in today:
         change = "{:+.2f}%".format(today['priceChan24'])
-        rate += "   ("
+        rate += " ("
         rate += change
         rate += ")*"
     else:
@@ -677,18 +677,18 @@ def append_price_change(part: dict, today: dict, price: float):
     part['csv'].append("{};{}".format(round(price), change))
 
 
-def append_actual_quote(part: dict):
+def append_actual_quote(part: dict, price: float = None):
+    """
+    :param part: dict { 'labels': [], 'mail': [], 'csv': [] }
+    :param price: optional, but required for bitmex
+    """
     part['labels'].append("Actual Quote")
-    if CONF.exchange == 'bitmex':
-        part['mail'].append("Actual quote: {:>21s}".format("n/a"))
-        part['csv'].append("n/a")
+    actual_quote = calculate_actual_quote(price)
+    if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
+        part['mail'].append("Actual quote: {:>21n}%  (Max.)".format(round(actual_quote)))
     else:
-        actual_quote = calculate_actual_quote()
-        if actual_quote >= CONF.max_crypto_quote_in_percent * 0.98:
-            part['mail'].append("Actual quote: {:>21n}%  (Max.)".format(round(actual_quote)))
-        else:
-            part['mail'].append("Actual quote: {:>21n}%".format(round(actual_quote)))
-        part['csv'].append("{:n}%".format(round(actual_quote)))
+        part['mail'].append("Actual quote: {:>21n}%".format(round(actual_quote)))
+    part['csv'].append("{:n}%".format(round(actual_quote)))
 
 
 def append_margin_leverage(part: dict):
@@ -1604,14 +1604,15 @@ def calculate_target_quote():
     return target_quote
 
 
-def calculate_actual_quote():
+def calculate_actual_quote(price: float = None):
+    """
+    :param price: optional, but required for bitmex
+    :return: actual_qoute in %
+    """
     if CONF.exchange == 'bitmex':
-        LOG.warning('calculate_actual_quote() is not intended for bitmex')
-        return None
-        # balances = get_balances()
-        # crypto_quote = balances['marginBalance'] / balances['amount'] * 100
-        # LOG.info('%s quote %.2f @ %d', CONF.base, crypto_quote, BAL['price'])
-        # return crypto_quote
+        actual_position = get_position_info()['currentQty']
+        crypto_quote = 100 * actual_position / CONF.start_crypto_price / CONF.start_margin_balance * price / CONF.start_crypto_price
+        return crypto_quote
     crypto_quote = (BAL['cryptoBalance'] / BAL['totalBalanceInCrypto']) * 100 if BAL['cryptoBalance'] > 0 else 0
     LOG.info('%s total/crypto quote %.2f/%.2f %.2f @ %d', CONF.base, BAL['totalBalanceInCrypto'], BAL['cryptoBalance'],
              crypto_quote, BAL['price'])
@@ -1690,12 +1691,8 @@ def init_bitmex():
     start_values = {}
     balances = get_balances()
     mayer = get_mayer()
-    pos = get_position_info()
-    if pos['avgEntryPrice']:
-        start_values['crypto_price'] = round(pos['avgEntryPrice'])
-    else:
-        price = get_current_price()
-        start_values['crypto_price'] = round(price)
+    price = get_current_price()
+    start_values['crypto_price'] = round(price)
     start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
     start_values['mayer_multiple'] = mayer['current']
     return start_values
