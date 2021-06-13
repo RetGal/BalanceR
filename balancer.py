@@ -388,7 +388,7 @@ def create_report_part_settings():
     part['mail'].append("Max quote {} in %: {:>15}".format(CONF.base, CONF.max_crypto_quote_in_percent))
     part['csv'].append("{}".format(CONF.max_crypto_quote_in_percent))
     part['labels'].append("Max Leverage")
-    part['mail'].append("Max leverage in %: {:>10}".format(CONF.max_leverage_in_percent))
+    part['mail'].append("Max leverage in %: {:>16}".format(CONF.max_leverage_in_percent))
     part['csv'].append("{}".format(CONF.max_leverage_in_percent))
     part['labels'].append("Tol. %")
     part['mail'].append("Tolerance in %: {:>19}".format(CONF.tolerance_in_percent))
