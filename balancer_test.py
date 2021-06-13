@@ -162,8 +162,9 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(15, action['percentage'])
         self.assertEqual(10000, action['price'])
 
+    @patch('balancer.get_margin_leverage', return_value=1.2)
     @patch('balancer.get_position_info', return_value={'currentQty': 4000})
-    def test_meditate_quote_too_low_bitmex(self, mock_get_position_info):
+    def test_meditate_quote_too_low_bitmex(self, mock_get_position_info, mock_get_margin_leverage):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.start_crypto_price = 30000
@@ -173,6 +174,18 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('BUY', action['direction'])
         self.assertEqual(2000, action['amount'])
         self.assertEqual(30000, action['price'])
+
+    @patch('balancer.logging')
+    @patch('balancer.get_margin_leverage', return_value=1.6)
+    @patch('balancer.get_position_info', return_value={'currentQty': 5000})
+    def test_meditate_quote_too_low_but_limited_by_max_leverage_bitmex(self, mock_get_position_info, mock_get_margin_leverage, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.start_crypto_price = 30000
+
+        self.assertIsNone(balancer.meditate_bitmex(30000))
+        mock_logger.info.assert_called_with('Leverage limited by configuration to %.2f', balancer.CONF.max_leverage_in_percent)
 
     @patch('balancer.get_position_info', return_value={'currentQty': 6000})
     def test_meditate_quote_too_high_bitmex(self, mock_get_position_info):
@@ -335,9 +348,10 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(2650, action['amount'])
         self.assertEqual(20000, action['price'])
 
+    @patch('balancer.get_margin_leverage', return_value=1.2)
     @patch('balancer.calculate_target_quote', return_value=89.375)
     @patch('balancer.get_position_info', return_value={'currentQty': 5350})
-    def test_meditate_actual_position_too_low(self, mock_get_position_info, mock_calculate_target_quote):
+    def test_meditate_actual_position_too_low(self, mock_get_position_info, mock_calculate_target_quote, mock_get_margin_leverage):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.auto_quote = 'MMRange'
@@ -1279,6 +1293,7 @@ class BalancerTest(unittest.TestCase):
         conf.mm_quote_0 = 2
         conf.mm_quote_100 = 1.2
         conf.max_crypto_quote_in_percent = 80
+        conf.max_leverage_in_percent = 160
         conf.tolerance_in_percent = 2
         conf.period_in_minutes = 10
         conf.stop_buy = False

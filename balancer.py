@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.0.4'
+            self.bot_version = '1.0.5'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -72,6 +72,7 @@ class ExchangeConfig:
             self.trade_advantage_in_percent = float(props['trade_advantage_in_percent'])
             self.stop_buy = bool(str(props['stop_buy']).strip('"').lower() == 'true')
             self.max_crypto_quote_in_percent = abs(float(props['max_crypto_quote_in_percent']))
+            self.max_leverage_in_percent = abs(float(props['max_leverage_in_percent']))
             self.backtrade_only_on_profit = bool(str(props['backtrade_only_on_profit']).strip('"').lower() == 'true')
             currency = self.pair.split("/")
             self.base = currency[0]
@@ -313,7 +314,7 @@ def create_mail_content(daily: bool = False):
     if CONF.exchange == 'bitmex':
         start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
     else:
-        start = [];
+        start = []
     advice = ["Assessment / advice", "-------------------", '\n'.join(advice_part['mail']), '\n\n']
     settings = ["Your settings", "-------------", '\n'.join(settings_part['mail']), '\n\n']
     general = ["General", "-------", '\n'.join(general_part), '\n\n']
@@ -386,6 +387,9 @@ def create_report_part_settings():
     part['labels'].append("Max Quote")
     part['mail'].append("Max quote {} in %: {:>15}".format(CONF.base, CONF.max_crypto_quote_in_percent))
     part['csv'].append("{}".format(CONF.max_crypto_quote_in_percent))
+    part['labels'].append("Max Leverage")
+    part['mail'].append("Max leverage in %: {:>10}".format(CONF.max_leverage_in_percent))
+    part['csv'].append("{}".format(CONF.max_leverage_in_percent))
     part['labels'].append("Tol. %")
     part['mail'].append("Tolerance in %: {:>19}".format(CONF.tolerance_in_percent))
     part['csv'].append("{}".format(CONF.tolerance_in_percent))
@@ -1569,6 +1573,10 @@ def meditate_bitmex(price: float):
     target_position = CONF.start_margin_balance * CONF.start_crypto_price * target_quote / price * CONF.start_crypto_price
     actual_position = get_position_info()['currentQty']
     if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
+        leverage = get_margin_leverage() * 100
+        if leverage >= CONF.max_leverage_in_percent:
+            LOG.info('Leverage limited by configuration to %.2f', CONF.max_leverage_in_percent)
+            return None
         action['direction'] = 'BUY'
         action['amount'] = round(target_position - actual_position)
         action['percentage'] = None
