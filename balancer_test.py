@@ -170,6 +170,14 @@ class BalancerTest(unittest.TestCase):
 
         self.assertIsNone(action)
 
+    def test_meditate_quote_too_high_stop_sell_enabled(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.stop_sell = True
+
+        action = balancer.meditate(95, 10000)
+
+        self.assertIsNone(action)
+
     @patch('balancer.read_daily_average', return_value=10000)
     @patch('balancer.get_current_price', return_value=10000)
     def test_meditate_quote_too_low_auto_quote_enabled(self, mock_current_price, mock_mayer):
@@ -314,7 +322,8 @@ class BalancerTest(unittest.TestCase):
 
     @patch('balancer.calculate_target_quote', return_value=65)
     @patch('balancer.get_position_info', return_value={'currentQty': 12000})
-    def test_meditate_actual_position_too_low(self, mock_get_position_info, mock_calculate_target_quote):
+    @patch('balancer.get_margin_leverage', return_value=1.2)
+    def test_meditate_actual_position_too_low(self, mock_get_margin_leverage, mock_get_position_info, mock_calculate_target_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.auto_quote = 'MMRange'
@@ -1158,9 +1167,11 @@ class BalancerTest(unittest.TestCase):
         conf.mm_quote_0 = 2
         conf.mm_quote_100 = 1.2
         conf.max_crypto_quote_in_percent = 80
+        conf.max_leverage_in_percent = 160
         conf.tolerance_in_percent = 2
         conf.period_in_minutes = 10
         conf.stop_buy = False
+        conf.stop_sell = False
         conf.backtrade_only_on_profit = False
         conf.report = 'T'
         conf.info = ''

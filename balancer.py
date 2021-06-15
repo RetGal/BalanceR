@@ -31,7 +31,7 @@ EMAIL_ONLY = False
 KEEP_ORDERS = False
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price',
-               'nvalid arg']
+               'nvalid arg', 'nvalid orderQty']
 ACCOUNT_ERRORS = ['account has been disabled', 'key is disabled', 'authentication failed', 'permission denied',
                   'invalid api key']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
@@ -47,7 +47,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '0.9.3'
+            self.bot_version = '0.9.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -67,7 +67,9 @@ class ExchangeConfig:
             self.order_adjust_seconds = abs(int(props['order_adjust_seconds']))
             self.trade_advantage_in_percent = float(props['trade_advantage_in_percent'])
             self.stop_buy = bool(str(props['stop_buy']).strip('"').lower() == 'true')
+            self.stop_sell = bool(str(props['stop_sell']).strip('"').lower() == 'true')
             self.max_crypto_quote_in_percent = abs(float(props['max_crypto_quote_in_percent']))
+            self.max_leverage_in_percent = abs(float(props['max_leverage_in_percent']))
             self.backtrade_only_on_profit = bool(str(props['backtrade_only_on_profit']).strip('"').lower() == 'true')
             currency = self.pair.split("/")
             self.base = currency[0]
@@ -129,7 +131,8 @@ class Order:
             self.datetime = ccxt_order['info']['created_at']
 
     def __str__(self):
-        return "{} order id: {}, price: {}, amount: {}, created: {}".format(self.side, self.id, self.price, self.amount, self.datetime)
+        return "{} order id: {}, price: {}, amount: {}, created: {}".format(self.side, self.id, self.price, self.amount,
+                                                                            self.datetime)
 
 
 class Stats:
@@ -254,7 +257,7 @@ def daily_report(immediately: bool = False):
     global EMAIL_SENT
 
     now = datetime.datetime.utcnow()
-    if immediately or datetime.datetime(2012, 1, 17, 12, 22).time() > now.time() \
+    if immediately or datetime.datetime(2012, 1, 17, 12, 25).time() > now.time() \
             > datetime.datetime(2012, 1, 17, 12, 1).time() and EMAIL_SENT != now.day:
         content = create_mail_content(True)
         filename_csv = INSTANCE + '.csv'
@@ -350,6 +353,9 @@ def create_report_part_settings():
     part['labels'].append("Max Quote")
     part['mail'].append("Max quote {} in %: {:>15}".format(CONF.base, CONF.max_crypto_quote_in_percent))
     part['csv'].append("{}".format(CONF.max_crypto_quote_in_percent))
+    part['labels'].append("Max Leverage")
+    part['mail'].append("Max leverage in %: {:>16}".format(CONF.max_leverage_in_percent))
+    part['csv'].append("{}".format(CONF.max_leverage_in_percent))
     part['labels'].append("Tol. %")
     part['mail'].append("Tolerance in %: {:>19}".format(CONF.tolerance_in_percent))
     part['csv'].append("{}".format(CONF.tolerance_in_percent))
@@ -371,8 +377,12 @@ def create_report_part_settings():
     part['labels'].append("Stop Buy")
     part['mail'].append("Stop buy: {:>25}".format(str('Y' if CONF.stop_buy is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.stop_buy is True else 'N')))
-    part['labels'].append("BT Only On Prof.")
-    part['mail'].append("Backtrade only on profit: {:>9}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
+    part['labels'].append("Stop Sell")
+    part['mail'].append("Stop sell: {:>24}".format(str('Y' if CONF.stop_sell is True else 'N')))
+    part['csv'].append("{}".format(str('Y' if CONF.stop_sell is True else 'N')))
+    part['labels'].append("Backtrade Only Profit")
+    part['mail'].append(
+        "Backtrade only on profit: {:>9}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
     part['labels'].append("Info")
     part['labels'].append("Startdate")
@@ -663,7 +673,7 @@ def append_actual_quote(part: dict):
 
 
 def append_margin_leverage(part: dict):
-    part['labels'].append("Margin Leverage")
+    part['labels'].append("Leverage")
     margin_leverage = get_margin_leverage()
     if margin_leverage:
         margin_leverage = round(margin_leverage * 100)
@@ -1018,7 +1028,7 @@ def do_buy(quote: float, amount: float, reference_price: float, attempt: int):
         if quote:
             order_size_crypto = calculate_buy_order_size(quote, reference_price, buy_price)
         elif amount:
-            order_size_fiat = calculate_order_size(amount)
+            order_size_fiat = to_bitmex_order_size(amount)
         if order_size_crypto is None and order_size_fiat is None:
             LOG.info('Buy order size below minimum')
             sleep_for(30, 50)
@@ -1041,7 +1051,7 @@ def do_buy(quote: float, amount: float, reference_price: float, attempt: int):
     if quote:
         order_size_crypto = calculate_buy_order_size(quote, reference_price, get_current_price())
     elif amount:
-        order_size_fiat = calculate_order_size(amount)
+        order_size_fiat = to_bitmex_order_size(amount)
     if order_size_crypto is None and order_size_fiat is None:
         return None
     return create_market_buy_order(order_size_crypto, order_size_fiat)
@@ -1066,22 +1076,21 @@ def calculate_buy_order_size(reference_quote: float, reference_price: float, act
     """
     quote = reference_quote * (reference_price / actual_price)
     size = BAL['totalBalanceInCrypto'] / (100 / quote) / 1.01
-    if CONF.exchange == 'bitmex':
-        size_in_fiat = int(round(size * actual_price, -2))
-        if size_in_fiat < MIN_FIAT_ORDER_SIZE:
-            LOG.info('Order size %f < %f', size_in_fiat, MIN_FIAT_ORDER_SIZE)
-        return size
     if size > MIN_ORDER_SIZE:
         return round(size - 0.000000006, 8)
     LOG.info('Order size %f < %f', size, MIN_ORDER_SIZE)
     return None
 
 
-def calculate_order_size(amount_fiat: float):
+def to_bitmex_order_size(amount_fiat: float):
+    if CONF.exchange != 'bitmex':
+        LOG.warning('to_bitmex_order_size is intended for bitmex only')
+        return None
     size = int(round(amount_fiat, -2))
     if size >= MIN_FIAT_ORDER_SIZE:
         return size
-    LOG.info('Order size %f < %f', size, MIN_FIAT_ORDER_SIZE)
+    LOG.info('Order size (%s) %s < %s', amount_fiat, size, MIN_FIAT_ORDER_SIZE)
+    sleep_for(30, 50)
     return None
 
 
@@ -1103,7 +1112,7 @@ def do_sell(quote: float, amount: float, reference_price: float, attempt: int):
         if quote:
             order_size_crypto = calculate_sell_order_size(quote, reference_price, sell_price)
         elif amount:
-            order_size_fiat = calculate_order_size(amount)
+            order_size_fiat = to_bitmex_order_size(amount)
         if order_size_crypto is None and order_size_fiat is None:
             LOG.info('Sell order size below minimum')
             sleep_for(30, 50)
@@ -1126,7 +1135,7 @@ def do_sell(quote: float, amount: float, reference_price: float, attempt: int):
     if quote:
         order_size_crypto = calculate_sell_order_size(quote, reference_price, get_current_price())
     elif amount:
-        order_size_fiat = calculate_order_size(amount)
+        order_size_fiat = to_bitmex_order_size(amount)
     if order_size_crypto is None and order_size_fiat is None:
         return None
     return create_market_sell_order(order_size_crypto, order_size_fiat)
@@ -1232,11 +1241,12 @@ def create_sell_order(price: float, amount_crypto: float, amount_fiat: float):
     try:
         if CONF.exchange == 'bitmex':
             price = round(price * 2) / 2
-            order_size = amount_fiat if amount_fiat else round(price * amount_crypto)
-            order_size = calculate_order_size(order_size)
-            if not order_size:
+            if not amount_fiat:
+                amount_fiat = amount_crypto * price
+            amount_fiat = to_bitmex_order_size(amount_fiat)
+            if not amount_fiat:
                 return None
-            new_order = EXCHANGE.create_limit_sell_order(CONF.pair, order_size, price)
+            new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_fiat, price)
         else:
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price)
         norder = Order(new_order)
@@ -1247,7 +1257,7 @@ def create_sell_order(price: float, amount_crypto: float, amount_fiat: float):
         if any(e in str(error.args) for e in STOP_ERRORS):
             not_selling = 'Order submission not possible - not selling %s'
             if CONF.exchange == 'bitmex':
-                LOG.warning(not_selling, order_size)
+                LOG.warning(not_selling, amount_fiat)
             else:
                 LOG.warning(not_selling, amount_crypto)
             return None
@@ -1269,11 +1279,12 @@ def create_buy_order(price: float, amount_crypto: float, amount_fiat: float):
     try:
         if CONF.exchange == 'bitmex':
             price = round(price * 2) / 2
-            order_size = amount_fiat if amount_fiat else round(price * amount_crypto)
-            order_size = calculate_order_size(order_size)
-            if not order_size:
+            if not amount_fiat:
+                amount_fiat = amount_crypto * price
+            amount_fiat = to_bitmex_order_size(amount_fiat)
+            if not amount_fiat:
                 return None
-            new_order = EXCHANGE.create_limit_buy_order(CONF.pair, order_size, price)
+            new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_fiat, price)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price, {'oflags': 'fcib'})
         else:
@@ -1287,7 +1298,7 @@ def create_buy_order(price: float, amount_crypto: float, amount_fiat: float):
         if any(e in str(error.args) for e in STOP_ERRORS):
             not_buying = 'Order submission not possible - not buying %s'
             if CONF.exchange == 'bitmex':
-                LOG.warning(not_buying, order_size)
+                LOG.warning(not_buying, amount_fiat)
             else:
                 LOG.warning(not_buying, amount_crypto)
             return None
@@ -1306,10 +1317,10 @@ def create_market_sell_order(amount_crypto: float, amount_fiat: float):
     try:
         if CONF.exchange == 'bitmex':
             if not amount_fiat:
-                amount_fiat = round(amount_crypto * get_current_price())
-                amount_fiat = calculate_order_size(amount_fiat)
-                if not amount_fiat:
-                    return None
+                amount_fiat = amount_crypto * get_current_price()
+            amount_fiat = to_bitmex_order_size(amount_fiat)
+            if not amount_fiat:
+                return None
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_fiat)
         else:
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_crypto)
@@ -1331,7 +1342,7 @@ def create_market_sell_order(amount_crypto: float, amount_fiat: float):
         return create_market_sell_order(amount_crypto, amount_fiat)
 
 
-def create_market_buy_order(amount_crypto: float, amount_fiat: float):
+def create_market_buy_order(amount_crypto: float, amount_fiat: float = None):
     """
     Creates a market buy order
     input: amount_crypto to be bought
@@ -1340,8 +1351,8 @@ def create_market_buy_order(amount_crypto: float, amount_fiat: float):
     try:
         if CONF.exchange == 'bitmex':
             if not amount_fiat:
-                amount_fiat = round(amount_crypto * get_current_price())
-            amount_fiat = calculate_order_size(amount_fiat)
+                amount_fiat = amount_crypto * get_current_price()
+            amount_fiat = to_bitmex_order_size(amount_fiat)
             if not amount_fiat:
                 return None
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_fiat)
@@ -1512,12 +1523,16 @@ def meditate(quote: float, price: float):
         target_position = CONF.base_value * (target_quote / 100)
         actual_position = get_position_info()['currentQty']
         if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
+            leverage = get_margin_leverage() * 100
+            if leverage >= CONF.max_leverage_in_percent:
+                LOG.info('Leverage limited by configuration to %.2f', CONF.max_leverage_in_percent)
+                return None
             action['direction'] = 'BUY'
             action['amount'] = target_position - actual_position
             action['percentage'] = None
             action['price'] = price
             return action
-        if target_position < actual_position * (1 - CONF.tolerance_in_percent / 100):
+        if not CONF.stop_sell and target_position < actual_position * (1 - CONF.tolerance_in_percent / 100):
             action['direction'] = 'SELL'
             action['amount'] = actual_position - target_position
             action['percentage'] = None
@@ -1526,12 +1541,16 @@ def meditate(quote: float, price: float):
         return None
     if not CONF.stop_buy and quote < target_quote - CONF.tolerance_in_percent and (
             quote < CONF.max_crypto_quote_in_percent or CONF.auto_quote == 'OFF'):
+        leverage = get_margin_leverage() * 100
+        if leverage >= CONF.max_leverage_in_percent:
+            LOG.info('Leverage limited by configuration to %.2f', CONF.max_leverage_in_percent)
+            return None
         action['direction'] = 'BUY'
         action['amount'] = None
         action['percentage'] = target_quote - quote
         action['price'] = price
         return action
-    if quote > target_quote + CONF.tolerance_in_percent:
+    if not CONF.stop_sell and quote > target_quote + CONF.tolerance_in_percent:
         action['direction'] = 'SELL'
         action['amount'] = None
         action['percentage'] = quote - target_quote
@@ -1582,7 +1601,7 @@ def calculate_balances():
         pos = get_position_info()
         if pos['homeNotional'] and pos['homeNotional'] < 0:
             LOG.warning('Position short by %f', abs(pos['homeNotional']))
-            create_market_buy_order(abs(pos['homeNotional']), None)
+            create_market_buy_order(abs(pos['homeNotional']))
             sleep_for(2, 4)
             pos = get_position_info()
         # aka margin balance
