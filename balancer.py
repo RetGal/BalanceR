@@ -1541,8 +1541,8 @@ def meditate(quote: float, price: float):
         return None
     if not CONF.stop_buy and quote < target_quote - CONF.tolerance_in_percent and (
             quote < CONF.max_crypto_quote_in_percent or CONF.auto_quote == 'OFF'):
-        leverage = get_margin_leverage() * 100
-        if leverage >= CONF.max_leverage_in_percent:
+        leverage = get_margin_leverage()
+        if leverage and leverage * 100 >= CONF.max_leverage_in_percent:
             LOG.info('Leverage limited by configuration to %.2f', CONF.max_leverage_in_percent)
             return None
         action['direction'] = 'BUY'
