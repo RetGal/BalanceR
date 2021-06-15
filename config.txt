@@ -8,13 +8,13 @@ test = False
 # currency properties
 pair = "BTC/USD"
 symbol = "XBTUSD"
-#.
+#..
 # start values
 start_crypto_price = 0
 start_margin_balance = 0.0
 start_mayer_multiple = 0.0
 start_date = ""
-#.
+#...
 # bot properties
 net_deposits_in_base_currency = 0
 crypto_quote_in_percent = 50
@@ -34,12 +34,12 @@ trade_advantage_in_percent = 0.02
 stop_buy = False
 stop_sell = False
 backtrade_only_on_profit = False
-#.
+#....
 # email properties
 recipient_addresses = "recipient@example.com,another.recipient@example.com"
 sender_address = "sender@example.com"
 sender_password = "password"
 mail_server = "mail.example.com"
-#.
+#.....
 # information
 info = ""
