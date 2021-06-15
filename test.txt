@@ -32,6 +32,7 @@ trade_trials = 3
 order_adjust_seconds = 90
 trade_advantage_in_percent = 0.02
 stop_buy = False
+stop_sell = False
 backtrade_only_on_profit = False
 #.
 # email properties

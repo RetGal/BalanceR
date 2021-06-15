@@ -207,6 +207,14 @@ class BalancerTest(unittest.TestCase):
 
         self.assertIsNone(action)
 
+    def test_meditate_quote_too_high_stop_sell_enabled(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.stop_sell = True
+
+        action = balancer.meditate(95, 10000)
+
+        self.assertIsNone(action)
+
     @patch('balancer.read_daily_average', return_value=10000)
     @patch('balancer.get_current_price', return_value=10000)
     def test_meditate_quote_too_low_auto_quote_enabled(self, mock_current_price, mock_mayer):
@@ -348,6 +356,18 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(2650, action['amount'])
         self.assertEqual(20000, action['price'])
 
+    @patch('balancer.calculate_target_quote', return_value=66.875)
+    @patch('balancer.get_position_info', return_value={'currentQty': 8000})
+    def test_meditate_position_too_high_stop_sell_enabled(self, mock_get_position_info, mock_calculate_target_quote):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.stop_sell = True
+
+        action = balancer.meditate_bitmex(20000)
+
+        self.assertIsNone(action)
+
     @patch('balancer.get_margin_leverage', return_value=1.2)
     @patch('balancer.calculate_target_quote', return_value=89.375)
     @patch('balancer.get_position_info', return_value={'currentQty': 5350})
@@ -361,6 +381,19 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('BUY', action['direction'])
         self.assertEqual(4458, action['amount'])
         self.assertEqual(14580, action['price'])
+
+    @patch('balancer.get_margin_leverage', return_value=1.2)
+    @patch('balancer.calculate_target_quote', return_value=89.375)
+    @patch('balancer.get_position_info', return_value={'currentQty': 5350})
+    def test_meditate_actual_position_too_low_stop_buy_enabled(self, mock_get_position_info, mock_calculate_target_quote, mock_get_margin_leverage):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.auto_quote = 'MMRange'
+        balancer.CONF.stop_buy = True
+
+        action = balancer.meditate_bitmex(14580)
+
+        self.assertIsNone(action)
 
     @patch('balancer.calculate_target_quote', return_value=61)
     @patch('balancer.get_position_info', return_value={'currentQty': 3200})
@@ -1297,6 +1330,7 @@ class BalancerTest(unittest.TestCase):
         conf.tolerance_in_percent = 2
         conf.period_in_minutes = 10
         conf.stop_buy = False
+        conf.stop_sell = False
         conf.backtrade_only_on_profit = False
         conf.report = 'T'
         conf.info = ''

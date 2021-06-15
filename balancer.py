@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.0.5'
+            self.bot_version = '1.0.6'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -71,6 +71,7 @@ class ExchangeConfig:
             self.order_adjust_seconds = abs(int(props['order_adjust_seconds']))
             self.trade_advantage_in_percent = float(props['trade_advantage_in_percent'])
             self.stop_buy = bool(str(props['stop_buy']).strip('"').lower() == 'true')
+            self.stop_sell = bool(str(props['stop_sell']).strip('"').lower() == 'true')
             self.max_crypto_quote_in_percent = abs(float(props['max_crypto_quote_in_percent']))
             self.max_leverage_in_percent = abs(float(props['max_leverage_in_percent']))
             self.backtrade_only_on_profit = bool(str(props['backtrade_only_on_profit']).strip('"').lower() == 'true')
@@ -411,6 +412,9 @@ def create_report_part_settings():
     part['labels'].append("Stop Buy")
     part['mail'].append("Stop buy: {:>25}".format(str('Y' if CONF.stop_buy is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.stop_buy is True else 'N')))
+    part['labels'].append("Stop Sell")
+    part['mail'].append("Stop sell: {:>24}".format(str('Y' if CONF.stop_sell is True else 'N')))
+    part['csv'].append("{}".format(str('Y' if CONF.stop_sell is True else 'N')))
     part['labels'].append("Backtrade Only Profit")
     part['mail'].append(
         "Backtrade only on profit: {:>9}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
@@ -1555,7 +1559,7 @@ def meditate(quote: float, price: float):
         action['percentage'] = target_quote - quote
         action['price'] = price
         return action
-    if quote > target_quote + CONF.tolerance_in_percent:
+    if not CONF.stop_sell and quote > target_quote + CONF.tolerance_in_percent:
         action['direction'] = 'SELL'
         action['amount'] = None
         action['percentage'] = quote - target_quote
@@ -1582,7 +1586,7 @@ def meditate_bitmex(price: float):
         action['percentage'] = None
         action['price'] = price
         return action
-    if target_position < actual_position * (1 - CONF.tolerance_in_percent / 100):
+    if not CONF.stop_sell and target_position < actual_position * (1 - CONF.tolerance_in_percent / 100):
         action['direction'] = 'SELL'
         action['amount'] = round(actual_position - target_position)
         action['percentage'] = None
