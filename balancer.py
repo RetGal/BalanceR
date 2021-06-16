@@ -615,7 +615,7 @@ def append_balance_change(part: dict, today: dict):
     part['labels'].append("Balance {}".format(CONF.quote))
     part['labels'].append("Change")
     nan = "% n/a"
-    m_bal = "Balance {}: {:>24.4f}".format(CONF.base, today['mBal'])
+    m_bal = "Balance {}: {:>22.4f}".format(CONF.base, today['mBal'])
     if 'mBalChan24' in today:
         change = "{:+.2f}%".format(today['mBalChan24'])
         m_bal += " ("
@@ -629,7 +629,7 @@ def append_balance_change(part: dict, today: dict):
     fm_bal = "Balance {}: {:>22}".format(CONF.quote, round(today['fmBal']))
     if 'fmBalChan24' in today:
         change = "{:+.2f}%".format(today['fmBalChan24'])
-        fm_bal += "   ("
+        fm_bal += " ("
         fm_bal += change
         fm_bal += ")*"
     else:
