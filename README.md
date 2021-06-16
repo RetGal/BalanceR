@@ -76,3 +76,18 @@ Fehlt diese Datei, dann konnte *balancer.py* nicht gestartet werden.
 Die nächste Anlaufstelle wäre die entsprechende *tmux* Session:
 
 `tmux a -t test1`
+
+
+## Docker
+
+Container builden
+
+```bash
+docker build -t  retgal/balancer:latest .
+```
+
+BalanceR mit der externen config test.txt starten
+
+```bash
+docker run -it -v $(pwd)/test.txt:/etc/balancer/config.txt -e BALANCE_R_CONFIG="/etc/balancer/config" retgal/balancer:latest
+```
