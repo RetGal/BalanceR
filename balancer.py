@@ -492,8 +492,8 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
     part['labels'].append("Overall Perf. {}".format(CONF.base))
     part['labels'].append("Performance")
     if net_deposits is None:
-        part['mail'].append("Net deposits {}: {:>14}".format(CONF.base, 'n/a'))
-        part['mail'].append("Overall performance in {}: {:>4} (% n/a)".format(CONF.base, 'n/a'))
+        part['mail'].append("Net deposits {}: {:>17}".format(CONF.base, 'n/a'))
+        part['mail'].append("Overall performance in {}: {:>7} (% n/a)".format(CONF.base, 'n/a'))
         part['csv'].append("n/a")
         part['csv'].append("n/a")
         part['csv'].append("% n/a")
