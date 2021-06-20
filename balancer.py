@@ -977,7 +977,7 @@ def get_closed_order():
     :return: Order
     """
     try:
-        if CONF.exchange == 'kraken':
+        if CONF.exchange in ['kraken', 'liquid']:
             result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=1)
         else:
             result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=2, params={'reverse': True})
