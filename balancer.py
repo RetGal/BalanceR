@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.0.6'
+            self.bot_version = '1.0.7'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -977,7 +977,10 @@ def get_closed_order():
     :return: Order
     """
     try:
-        result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=2, params={'reverse': True})
+        if CONF.exchange == 'kraken':
+            result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=1)
+        else:
+            result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=2, params={'reverse': True})
         if result:
             orders = sorted(result, key=lambda order: order['datetime'])
             last_order = Order(orders[-1])
