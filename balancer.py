@@ -944,7 +944,10 @@ def get_closed_order():
     :return: Order
     """
     try:
-        result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=2, params={'reverse': True})
+        if CONF.exchange == 'kraken':
+            result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=1)
+        else:
+            result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=2, params={'reverse': True})
         if result:
             orders = sorted(result, key=lambda order: order['datetime'])
             last_order = Order(orders[-1])
