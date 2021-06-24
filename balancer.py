@@ -849,7 +849,7 @@ def get_margin_leverage():
     """
     try:
         if CONF.exchange == 'bitmex':
-            return EXCHANGE.fetch_balance()['info'][0]['marginLeverage']
+            return float(EXCHANGE.fetch_balance()['info'][0]['marginLeverage'])
         if CONF.exchange == 'kraken':
             result = EXCHANGE.private_post_tradebalance()['result']
             if hasattr(result, 'ml'):
@@ -1649,8 +1649,7 @@ def calculate_balances():
         if not balance['price']:
             balance['price'] = get_current_price()
         if pos['avgEntryPrice']:
-            balance['cryptoBalance'] = (abs(pos['foreignNotional']) / pos['avgEntryPrice'] * balance['price']) / pos[
-                'avgEntryPrice']
+            balance['cryptoBalance'] = (abs(pos['foreignNotional']) / int(pos['avgEntryPrice']) * balance['price']) / int(pos['avgEntryPrice'])
         return balance
     balance['cryptoBalance'] = get_crypto_balance()['total']
     sleep_for(3, 5)
@@ -1719,7 +1718,7 @@ def finit_bitmex():
     mayer = get_mayer()
     pos = get_position_info()
     if pos['avgEntryPrice']:
-        start_values['crypto_price'] = round(pos['avgEntryPrice'])
+        start_values['crypto_price'] = round(int(pos['avgEntryPrice']))
         start_values['margin_balance'] = float(balances['marginBalance']) * CONF.satoshi_factor
         start_values['mayer_multiple'] = mayer['current']
         start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
