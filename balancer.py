@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.0.7'
+            self.bot_version = '1.0.8'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1578,7 +1578,7 @@ def meditate_bitmex(price: float):
     else:
         target_quote = calculate_target_quote() / 100
     target_position = CONF.start_margin_balance * CONF.start_crypto_price * target_quote / price * CONF.start_crypto_price
-    actual_position = get_position_info()['currentQty']
+    actual_position = int(get_position_info()['currentQty'])
     if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
         leverage = get_margin_leverage() * 100
         if leverage >= CONF.max_leverage_in_percent:
@@ -1708,7 +1708,7 @@ def init_bitmex():
     mayer = get_mayer()
     price = get_current_price()
     start_values['crypto_price'] = round(price)
-    start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
+    start_values['margin_balance'] = float(balances['marginBalance']) * CONF.satoshi_factor
     start_values['mayer_multiple'] = mayer['current']
     return start_values
 
@@ -1720,7 +1720,7 @@ def finit_bitmex():
     pos = get_position_info()
     if pos['avgEntryPrice']:
         start_values['crypto_price'] = round(pos['avgEntryPrice'])
-        start_values['margin_balance'] = balances['marginBalance'] * CONF.satoshi_factor
+        start_values['margin_balance'] = float(balances['marginBalance']) * CONF.satoshi_factor
         start_values['mayer_multiple'] = mayer['current']
         start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
         return start_values
