@@ -1649,7 +1649,7 @@ def calculate_balances():
         if not balance['price']:
             balance['price'] = get_current_price()
         if pos['avgEntryPrice']:
-            balance['cryptoBalance'] = (abs(pos['foreignNotional']) / int(pos['avgEntryPrice']) * balance['price']) / int(pos['avgEntryPrice'])
+            balance['cryptoBalance'] = (abs(pos['foreignNotional']) / float(pos['avgEntryPrice']) * balance['price']) / float(pos['avgEntryPrice'])
         return balance
     balance['cryptoBalance'] = get_crypto_balance()['total']
     sleep_for(3, 5)
@@ -1718,7 +1718,7 @@ def finit_bitmex():
     mayer = get_mayer()
     pos = get_position_info()
     if pos['avgEntryPrice']:
-        start_values['crypto_price'] = round(int(pos['avgEntryPrice']))
+        start_values['crypto_price'] = round(float(pos['avgEntryPrice']))
         start_values['margin_balance'] = float(balances['marginBalance']) * CONF.satoshi_factor
         start_values['mayer_multiple'] = mayer['current']
         start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
