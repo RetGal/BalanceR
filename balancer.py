@@ -568,8 +568,8 @@ def append_liquidation_price(part: dict):
         sleep_for(1, 2)
         poi = get_position_info()
     if poi is not None and 'liquidationPrice' in poi and poi['liquidationPrice'] is not None:
-        part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, int(poi['liquidationPrice'])))
-        part['csv'].append("{}".format(int(poi['liquidationPrice'])))
+        part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, float(poi['liquidationPrice'])))
+        part['csv'].append("{}".format(float(poi['liquidationPrice'])))
     else:
         part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, 'n/a'))
         part['csv'].append("n/a")
@@ -876,7 +876,7 @@ def get_net_deposits():
         currency = CONF.base if CONF.base != 'BTC' else 'XBt'
         if CONF.exchange == 'bitmex':
             result = EXCHANGE.private_get_user_wallet({'currency': currency})
-            return (result['deposited'] - result['withdrawn']) * CONF.satoshi_factor
+            return (float(result['deposited']) - float(result['withdrawn'])) * CONF.satoshi_factor
         if CONF.exchange == 'kraken':
             net_deposits = 0
             deposits = EXCHANGE.fetch_deposits(CONF.base)
@@ -902,7 +902,7 @@ def get_wallet_balance(price: float):
     """
     try:
         if CONF.exchange == 'bitmex':
-            return EXCHANGE.fetch_balance()['info'][0]['walletBalance'] * CONF.satoshi_factor
+            return float(EXCHANGE.fetch_balance()['info'][0]['walletBalance']) * CONF.satoshi_factor
         if CONF.exchange == 'kraken':
             asset = CONF.base if CONF.base != 'BTC' else 'XBt'
             return float(EXCHANGE.private_post_tradebalance({'asset': asset})['result']['tb'])
@@ -1639,8 +1639,8 @@ def calculate_balances():
     if CONF.exchange == 'bitmex':
         pos = get_position_info()
         if pos['homeNotional'] and float(pos['homeNotional']) < 0:
-            LOG.warning('Position short by %f', abs(pos['homeNotional']))
-            create_market_buy_order(abs(pos['homeNotional']))
+            LOG.warning('Position short by %f', abs(float(pos['homeNotional'])))
+            create_market_buy_order(abs(float(pos['homeNotional'])))
             sleep_for(2, 4)
             pos = get_position_info()
         # aka margin balance
@@ -1649,7 +1649,7 @@ def calculate_balances():
         if not balance['price']:
             balance['price'] = get_current_price()
         if pos['avgEntryPrice']:
-            balance['cryptoBalance'] = (abs(pos['foreignNotional']) / float(pos['avgEntryPrice']) * balance['price']) / float(pos['avgEntryPrice'])
+            balance['cryptoBalance'] = (abs(int(pos['foreignNotional'])) / float(pos['avgEntryPrice']) * balance['price']) / float(pos['avgEntryPrice'])
         return balance
     balance['cryptoBalance'] = get_crypto_balance()['total']
     sleep_for(3, 5)
