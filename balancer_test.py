@@ -384,7 +384,7 @@ class BalancerTest(unittest.TestCase):
 
     @patch('balancer.get_margin_leverage', return_value=1.2)
     @patch('balancer.calculate_target_quote', return_value=89.375)
-    @patch('balancer.get_position_info', return_value={'currentQty': 5350})
+    @patch('balancer.get_position_info', return_value={'currentQty': '5350'})
     def test_meditate_actual_position_too_low_stop_buy_enabled(self, mock_get_position_info, mock_calculate_target_quote, mock_get_margin_leverage):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
@@ -396,7 +396,7 @@ class BalancerTest(unittest.TestCase):
         self.assertIsNone(action)
 
     @patch('balancer.calculate_target_quote', return_value=61)
-    @patch('balancer.get_position_info', return_value={'currentQty': 3200})
+    @patch('balancer.get_position_info', return_value={'currentQty': '3200'})
     def test_meditate_actual_position_too_low_but_within_tolerance(self, mock_get_position_info, mock_calculate_target_quote):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
@@ -695,7 +695,7 @@ class BalancerTest(unittest.TestCase):
 
         self.assertAlmostEqual(99, quote, 2)
 
-    @patch('balancer.get_position_info', return_value={'currentQty': 20000})
+    @patch('balancer.get_position_info', return_value={'currentQty': '20000'})
     def test_calculate_actual_quote_bitmex_max(self, mock_get_position_info):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
@@ -706,7 +706,7 @@ class BalancerTest(unittest.TestCase):
 
         self.assertEqual(100, quote)
 
-    @patch('balancer.get_position_info', return_value={'currentQty': 10000})
+    @patch('balancer.get_position_info', return_value={'currentQty': '10000'})
     def test_calculate_actual_quote_bitmex(self, mock_get_position_info):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
@@ -1182,7 +1182,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('n/a', part['csv'][0])
         self.assertEqual('Liq. Price EUR', part['labels'][0])
 
-    @patch('balancer.get_position_info', return_value={'liquidationPrice': 10000})
+    @patch('balancer.get_position_info', return_value={'liquidationPrice': '10000'})
     def test_append_liquidation_price_bitmex(self, mock_position_info):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'

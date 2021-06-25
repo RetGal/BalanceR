@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.0.8'
+            self.bot_version = '1.0.9'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -568,8 +568,8 @@ def append_liquidation_price(part: dict):
         sleep_for(1, 2)
         poi = get_position_info()
     if poi is not None and 'liquidationPrice' in poi and poi['liquidationPrice'] is not None:
-        part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, round(poi['liquidationPrice'])))
-        part['csv'].append("{}".format(round(poi['liquidationPrice'])))
+        part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, int(poi['liquidationPrice'])))
+        part['csv'].append("{}".format(int(poi['liquidationPrice'])))
     else:
         part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, 'n/a'))
         part['csv'].append("n/a")
@@ -831,7 +831,7 @@ def get_margin_balance_of_fiat():
             pos = get_position_info()
             if not pos['lastPrice']:
                 return {'total': 0}
-            return {'total': pos['homeNotional'] * pos['lastPrice']}
+            return {'total': float(pos['homeNotional']) * float(pos['lastPrice'])}
         else:
             bal = get_fiat_balance()
         return bal
@@ -1625,7 +1625,7 @@ def calculate_actual_quote(price: float = None):
     :return: actual_qoute in %
     """
     if CONF.exchange == 'bitmex':
-        actual_position = get_position_info()['currentQty']
+        actual_position = int(get_position_info()['currentQty'])
         crypto_quote = 100 * actual_position / CONF.start_crypto_price / CONF.start_margin_balance * price / CONF.start_crypto_price
         return crypto_quote
     crypto_quote = (BAL['cryptoBalance'] / BAL['totalBalanceInCrypto']) * 100 if BAL['cryptoBalance'] > 0 else 0
@@ -1638,14 +1638,14 @@ def calculate_balances():
     balance = {'cryptoBalance': 0, 'totalBalanceInCrypto': 0, 'price': 0}
     if CONF.exchange == 'bitmex':
         pos = get_position_info()
-        if pos['homeNotional'] and pos['homeNotional'] < 0:
+        if pos['homeNotional'] and float(pos['homeNotional']) < 0:
             LOG.warning('Position short by %f', abs(pos['homeNotional']))
             create_market_buy_order(abs(pos['homeNotional']))
             sleep_for(2, 4)
             pos = get_position_info()
         # aka margin balance
         balance['totalBalanceInCrypto'] = get_crypto_balance()['total']
-        balance['price'] = pos['lastPrice']
+        balance['price'] = float(pos['lastPrice'])
         if not balance['price']:
             balance['price'] = get_current_price()
         if pos['avgEntryPrice']:
@@ -1755,6 +1755,8 @@ if __name__ == '__main__':
         BAL = calculate_balances()
         daily_report(True)
         sys.exit(0)
+
+    foo = calculate_balances()
 
     write_control_file()
 
