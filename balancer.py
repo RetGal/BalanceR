@@ -568,8 +568,8 @@ def append_liquidation_price(part: dict):
         sleep_for(1, 2)
         poi = get_position_info()
     if poi is not None and 'liquidationPrice' in poi and poi['liquidationPrice'] is not None:
-        part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, float(poi['liquidationPrice'])))
-        part['csv'].append("{}".format(float(poi['liquidationPrice'])))
+        part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, round(float(poi['liquidationPrice']))))
+        part['csv'].append("{}".format(round(float(poi['liquidationPrice']))))
     else:
         part['mail'].append("Liquidation price {}: {:>12}".format(CONF.quote, 'n/a'))
         part['csv'].append("n/a")
