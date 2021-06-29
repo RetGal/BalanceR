@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.0.9'
+            self.bot_version = '1.1.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -66,7 +66,6 @@ class ExchangeConfig:
             self.mm_quote_100 = abs(float(props['mm_quote_100']))
             self.tolerance_in_percent = abs(float(props['tolerance_in_percent']))
             self.period_in_minutes = abs(float(props['period_in_minutes']))
-            self.report = str(props['report']).strip('"')
             self.trade_trials = abs(int(props['trade_trials']))
             self.order_adjust_seconds = abs(int(props['order_adjust_seconds']))
             self.trade_advantage_in_percent = float(props['trade_advantage_in_percent'])
@@ -75,6 +74,7 @@ class ExchangeConfig:
             self.max_crypto_quote_in_percent = abs(float(props['max_crypto_quote_in_percent']))
             self.max_leverage_in_percent = abs(float(props['max_leverage_in_percent']))
             self.backtrade_only_on_profit = bool(str(props['backtrade_only_on_profit']).strip('"').lower() == 'true')
+            self.report = str(props['report']).strip('"')
             currency = self.pair.split("/")
             self.base = currency[0]
             self.quote = currency[1]
@@ -310,8 +310,7 @@ def create_mail_content(daily: bool = False):
 
     if not daily:
         trade = ["Last trade", "----------", '\n'.join(trade_part['mail']), '\n\n']
-    performance = ["Performance", "-----------",
-                   '\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
+    performance = ["Performance", "-----------",'\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
     if CONF.exchange == 'bitmex':
         start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
     else:
@@ -353,12 +352,12 @@ def create_report_part_start_values():
     part['labels'].append("Start Date")
     if CONF.exchange == 'bitmex':
         part['mail'].append("Start price {}: {:>18}".format(CONF.quote, CONF.start_crypto_price))
-        part['mail'].append("Start margin balance {}: {:>9.4f}".format(CONF.base, CONF.start_margin_balance))
-        part['mail'].append("Start MM: {:>25}".format(CONF.start_mayer_multiple))
+        part['mail'].append("Start margin balance {}: {:>9}".format(CONF.base, round(CONF.start_margin_balance, 4)))
+        part['mail'].append("Start MM: {:>25}".format(round(CONF.start_mayer_multiple, 4)))
         part['mail'].append("Start date: {:>27}".format(CONF.start_date))
         part['csv'].append("{}".format(CONF.start_crypto_price))
         part['csv'].append("{}".format(CONF.start_margin_balance))
-        part['csv'].append("{}".format(CONF.start_mayer_multiple))
+        part['csv'].append("{}".format(round(CONF.start_mayer_multiple, 1)))
         part['csv'].append("{}".format(CONF.start_date))
     else:
         part['csv'].append("n/a")
@@ -397,9 +396,6 @@ def create_report_part_settings():
     part['labels'].append("Period Min.")
     part['mail'].append("Period in minutes: {:>16}".format(CONF.period_in_minutes))
     part['csv'].append("{}".format(CONF.period_in_minutes))
-    part['labels'].append("Report")
-    part['mail'].append("Report: {:>27}".format(CONF.report))
-    part['csv'].append("{}".format(CONF.report))
     part['labels'].append("Trade Trials")
     part['mail'].append("Trade trials: {:>21}".format(CONF.trade_trials))
     part['csv'].append("{}".format(CONF.trade_trials))
@@ -416,9 +412,11 @@ def create_report_part_settings():
     part['mail'].append("Stop sell: {:>24}".format(str('Y' if CONF.stop_sell is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.stop_sell is True else 'N')))
     part['labels'].append("Backtrade Only Profit")
-    part['mail'].append(
-        "Backtrade only on profit: {:>9}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
+    part['mail'].append("Backtrade only on profit: {:>9}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
     part['csv'].append("{}".format(str('Y' if CONF.backtrade_only_on_profit is True else 'N')))
+    part['labels'].append("Report")
+    part['mail'].append("Report: {:>27}".format(CONF.report))
+    part['csv'].append("{}".format(CONF.report))
     part['labels'].append("Info")
     return part
 
@@ -704,7 +702,10 @@ def append_margin_leverage(part: dict):
     margin_leverage = get_margin_leverage()
     if margin_leverage:
         margin_leverage = round(margin_leverage * 100)
-        part['mail'].append("Margin leverage: {:>18n}%".format(margin_leverage))
+        if margin_leverage >= CONF.max_crypto_quote_in_percent * 0.98:
+            part['mail'].append("Margin leverage: {:>18n}% (Max.)".format(margin_leverage))
+        else:
+            part['mail'].append("Margin leverage: {:>18n}%".format(margin_leverage))
         part['csv'].append("{:n}%".format(margin_leverage))
     else:
         part['mail'].append("Margin leverage: {:>18}".format("% n/a"))
