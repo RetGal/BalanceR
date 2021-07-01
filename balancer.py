@@ -702,7 +702,7 @@ def append_margin_leverage(part: dict):
     margin_leverage = get_margin_leverage()
     if margin_leverage:
         margin_leverage = round(margin_leverage * 100)
-        if margin_leverage >= CONF.max_crypto_quote_in_percent * 0.98:
+        if margin_leverage >= CONF.max_leverage_in_percent * 0.98:
             part['mail'].append("Margin leverage: {:>18n}% (Max.)".format(margin_leverage))
         else:
             part['mail'].append("Margin leverage: {:>18n}%".format(margin_leverage))
