@@ -1521,6 +1521,9 @@ def set_leverage(new_leverage: float):
         if 'zero margin balance' in str(error.args):
             LOG.warning('Account not funded yet, retrying in 20 minutes')
             sleep_for(1200)
+        if any(e in str(error.args) for e in ['Forbidden']):
+            LOG.warning('Access denied, retrying in 40 minutes')
+            sleep_for(2400)
         if any(e in str(error.args) for e in STOP_ERRORS):
             LOG.warning('Insufficient available balance - not setting leverage to %s', new_leverage)
             return None
