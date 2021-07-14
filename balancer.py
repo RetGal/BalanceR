@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.1.0'
+            self.bot_version = '1.1.1'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -830,7 +830,7 @@ def get_margin_balance_of_fiat():
             bal['used'] = float(bal['m'])
         elif CONF.exchange == 'bitmex':
             pos = get_position_info()
-            if not pos['lastPrice']:
+            if not pos or not pos['lastPrice']:
                 return {'total': 0}
             return {'total': float(pos['homeNotional']) * float(pos['lastPrice'])}
         else:
@@ -1639,7 +1639,7 @@ def calculate_balances():
     balance = {'cryptoBalance': 0, 'totalBalanceInCrypto': 0, 'price': 0}
     if CONF.exchange == 'bitmex':
         pos = get_position_info()
-        if pos['homeNotional'] and float(pos['homeNotional']) < 0:
+        if pos and pos['homeNotional'] and float(pos['homeNotional']) < 0:
             LOG.warning('Position short by %f', abs(float(pos['homeNotional'])))
             create_market_buy_order(abs(float(pos['homeNotional'])))
             sleep_for(2, 4)
@@ -1756,8 +1756,6 @@ if __name__ == '__main__':
         BAL = calculate_balances()
         daily_report(True)
         sys.exit(0)
-
-    foo = calculate_balances()
 
     write_control_file()
 
