@@ -34,7 +34,7 @@ STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price',
                'nvalid arg', 'nvalid orderQty']
 ACCOUNT_ERRORS = ['account has been disabled', 'key is disabled', 'authentication failed', 'permission denied',
-                  'invalid api key']
+                  'invalid api key', 'access denied']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
 
 
