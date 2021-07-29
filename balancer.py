@@ -48,7 +48,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.1.1'
+            self.bot_version = '1.1.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -545,6 +545,13 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
         used_balance = round(used_balance)
     part['mail'].append("Position {}: {:>21}".format(CONF.quote, used_balance))
     part['csv'].append("{}".format(used_balance))
+    part['labels'].append("Target Position {}".format(CONF.quote))
+    if CONF.exchange == 'bitmex':
+        target_position = round(calculate_target_position(calculate_target_quote(), price))
+        part['mail'].append("Target position {}: {:>14}".format(CONF.quote, target_position))
+    else:
+        target_position = 'n/a'
+    part['csv'].append("{}".format(target_position))
     append_liquidation_price(part)
 
 
@@ -1555,10 +1562,7 @@ def get_btc_usd_pair():
 
 def meditate(quote: float, price: float):
     action = {}
-    if CONF.auto_quote == 'OFF':
-        target_quote = CONF.crypto_quote_in_percent
-    else:
-        target_quote = calculate_target_quote()
+    target_quote = calculate_target_quote()
     if not CONF.stop_buy and quote < target_quote - CONF.tolerance_in_percent and (
             quote < CONF.max_crypto_quote_in_percent or CONF.auto_quote == 'OFF'):
         action['direction'] = 'BUY'
@@ -1577,14 +1581,12 @@ def meditate(quote: float, price: float):
 
 def meditate_bitmex(price: float):
     action = {}
-    if CONF.auto_quote == 'OFF':
-        target_quote = CONF.crypto_quote_in_percent / 100
-    else:
-        target_quote = calculate_target_quote() / 100
-    target_position = CONF.start_margin_balance * CONF.start_crypto_price * target_quote / price * CONF.start_crypto_price
+    target_quote = calculate_target_quote()
+    target_position = calculate_target_position(target_quote, price)
     actual_position = int(get_position_info()['currentQty'])
     if not CONF.stop_buy and target_position > actual_position * (1 + CONF.tolerance_in_percent / 100):
         leverage = get_margin_leverage() * 100
+        LOG.info('Leverage is %.2f', leverage)
         if leverage >= CONF.max_leverage_in_percent:
             LOG.info('Leverage limited by configuration to %.2f', CONF.max_leverage_in_percent)
             return None
@@ -1603,6 +1605,8 @@ def meditate_bitmex(price: float):
 
 
 def calculate_target_quote():
+    if CONF.auto_quote == 'OFF':
+        return CONF.crypto_quote_in_percent
     mayer = get_mayer()
     if CONF.auto_quote == 'MM':
         if CONF.exchange == 'bitmex':
@@ -1621,6 +1625,10 @@ def calculate_target_quote():
         LOG.info('Auto quote limited by configuration to %.2f', CONF.max_crypto_quote_in_percent)
         return CONF.max_crypto_quote_in_percent
     return target_quote
+
+
+def calculate_target_position(target_quote_in_percent: float, price: float):
+    return CONF.start_margin_balance * CONF.start_crypto_price * target_quote_in_percent / 100 / price * CONF.start_crypto_price
 
 
 def calculate_actual_quote(price: float = None):
