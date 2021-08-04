@@ -30,6 +30,7 @@ BAL = {'cryptoBalance': 0, 'totalBalanceInCrypto': 0, 'price': 0}
 EMAIL_SENT = False
 EMAIL_ONLY = False
 KEEP_ORDERS = False
+NO_LOG = False
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price',
                'nvalid arg', 'nvalid orderQty']
@@ -48,7 +49,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.1.2'
+            self.bot_version = '1.1.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -166,7 +167,7 @@ class Stats:
         return None
 
 
-def function_logger(console_level: int, log_file: str, file_level: int = None):
+def function_logger(console_level: int, log_file: str = None, file_level: int = None):
     function_name = inspect.stack()[1][3]
     logger = logging.getLogger(function_name)
     # By default log all messages
@@ -178,7 +179,7 @@ def function_logger(console_level: int, log_file: str, file_level: int = None):
     ch.setFormatter(logging.Formatter('%(asctime)s: %(message)s', '%Y-%m-%d %H:%M:%S'))
     logger.addHandler(ch)
 
-    if file_level:
+    if log_file and file_level:
         fh = RotatingFileHandler("{}.log".format(log_file), mode='a', maxBytes=5 * 1024 * 1024, backupCount=4,
                                  encoding=None, delay=False)
         fh.setLevel(file_level)
@@ -1745,18 +1746,23 @@ if __name__ == '__main__':
     if len(sys.argv) > 1:
         INSTANCE = os.path.basename(sys.argv[1])
         if len(sys.argv) > 2:
-            if sys.argv[2] == '-eo':
+            if '-eo' in sys.argv:
                 EMAIL_ONLY = True
-            elif sys.argv[2] == '-keep':
+            if '-keep' in sys.argv:
                 KEEP_ORDERS = True
+            if '-nolog' in sys.argv:
+                NO_LOG = True
     else:
         INSTANCE = os.path.basename(input('Filename with API Keys (config): ') or 'config')
 
-    LOG_FILENAME = 'log{}{}'.format(os.path.sep, INSTANCE)
-    if not os.path.exists('log'):
-        os.makedirs('log')
+    if NO_LOG:
+        LOG = function_logger(logging.DEBUG)
+    else:
+        LOG_FILENAME = 'log{}{}'.format(os.path.sep, INSTANCE)
+        if not os.path.exists('log'):
+            os.makedirs('log')
+        LOG = function_logger(logging.DEBUG, LOG_FILENAME, logging.INFO)
 
-    LOG = function_logger(logging.DEBUG, LOG_FILENAME, logging.INFO)
     LOG.info('-----------------------')
     CONF = ExchangeConfig()
     LOG.info('BalanceR version: %s', CONF.bot_version)
