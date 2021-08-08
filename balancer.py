@@ -987,11 +987,12 @@ def get_closed_order():
     """
     try:
         if CONF.exchange in ['kraken', 'liquid']:
-            result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=1)
+            result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=10)
         else:
-            result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=2, params={'reverse': True})
+            result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=10, params={'reverse': True})
         if result:
-            orders = sorted(result, key=lambda order: order['datetime'])
+            closed = [r for r in result if r['status'] != 'canceled']
+            orders = sorted(closed, key=lambda order: closed['datetime'])
             last_order = Order(orders[-1])
             LOG.info('Last %s', str(last_order))
             return last_order
@@ -1768,6 +1769,8 @@ if __name__ == '__main__':
     LOG.info('BalanceR version: %s', CONF.bot_version)
 
     EXCHANGE = connect_to_exchange()
+
+    LAST_ORDER = get_closed_order()
 
     if EMAIL_ONLY:
         BAL = calculate_balances()
