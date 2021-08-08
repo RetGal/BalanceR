@@ -1709,7 +1709,7 @@ def handle_account_errors(error_message: str):
 
 
 def deactivate_bot(message: str):
-    os.remove(INSTANCE + '.pid')
+    os.remove('{}{}.pid'.format(DATA_DIR, INSTANCE))
     text = "Deactivated RB {}".format(INSTANCE)
     LOG.error(text)
     send_mail(text, message)
