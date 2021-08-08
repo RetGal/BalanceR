@@ -1770,8 +1770,6 @@ if __name__ == '__main__':
 
     EXCHANGE = connect_to_exchange()
 
-    LAST_ORDER = get_closed_order()
-
     if EMAIL_ONLY:
         BAL = calculate_balances()
         daily_report(True)
