@@ -31,6 +31,7 @@ EMAIL_SENT = False
 EMAIL_ONLY = False
 KEEP_ORDERS = False
 NO_LOG = False
+DATA_DIR = ''
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below', 'price',
                'nvalid arg', 'nvalid orderQty']
@@ -43,9 +44,9 @@ class ExchangeConfig:
     def __init__(self):
         self.mm_quotes = ['OFF', 'MM', 'MMRange']
         self.report_cadences = ['T', 'D', 'M', 'A']
-        self.mayer_file = 'mayer.avg'
+        self.mayer_file = '{}mayer.avg'.format(DATA_DIR)
         config = configparser.ConfigParser(interpolation=None)
-        config.read(INSTANCE + ".txt")
+        config.read('{}{}.txt'.format(DATA_DIR, INSTANCE))
 
         try:
             props = config['config']
@@ -265,7 +266,7 @@ def daily_report(immediately: bool = False):
     if immediately or datetime.datetime(2012, 1, 17, 12, 25).time() > now.time() \
             > datetime.datetime(2012, 1, 17, 12, 1).time() and EMAIL_SENT != now.day:
         content = create_mail_content(True)
-        filename_csv = INSTANCE + '.csv'
+        filename_csv = '{}{}.csv'.format(DATA_DIR, INSTANCE)
         update_csv(content, filename_csv)
         if immediately or is_due_date(datetime.date.today()):
             cadence = "Daily" if CONF.report in ['T', 'D'] else "Monthly" if CONF.report == 'M' else 'Annual'
@@ -758,7 +759,7 @@ def load_statistics():
 
 
 def persist_statistics(stats: Stats):
-    stats_file = INSTANCE + '.pkl'
+    stats_file = '{}{}.pkl'.format(DATA_DIR, INSTANCE)
     with open(stats_file, "wb") as file:
         pickle.dump(stats, file)
 
@@ -799,7 +800,7 @@ def set_start_values(values: dict):
         LOG.info('Final start position: price: %s, margin: %s, mayer: %s', values['crypto_price'], values['margin_balance'], values['mayer_multiple'])
     else:
         LOG.info('Initial start position: price: %s, margin: %s, mayer: %s', values['crypto_price'], values['margin_balance'], values['mayer_multiple'])
-    with open(INSTANCE + ".txt", 'w') as config_file:
+    with open('{}{}.txt'.format(DATA_DIR, INSTANCE), 'w') as config_file:
         config.write(config_file)
 
 
@@ -1051,7 +1052,7 @@ def connect_to_exchange():
 
 
 def write_control_file():
-    with open(INSTANCE + '.pid', 'w') as file:
+    with open('{}{}.pid'.format(DATA_DIR, INSTANCE), 'w') as file:
         file.write(str(os.getpid()) + ' ' + INSTANCE)
 
 
@@ -1744,7 +1745,12 @@ if __name__ == '__main__':
     print('ccxt version:', ccxt.__version__)
 
     if len(sys.argv) > 1:
-        INSTANCE = os.path.basename(sys.argv[1])
+        if os.path.sep in sys.argv[1]:
+            parts = sys.argv[1].split(os.path.sep)
+            INSTANCE = os.path.basename(parts.pop())
+            DATA_DIR = os.path.sep.join(parts) + os.path.sep
+        else:
+            INSTANCE = os.path.basename(sys.argv[1])
         if len(sys.argv) > 2:
             if '-eo' in sys.argv:
                 EMAIL_ONLY = True
@@ -1758,7 +1764,7 @@ if __name__ == '__main__':
     if NO_LOG:
         LOG = function_logger(logging.DEBUG)
     else:
-        LOG_FILENAME = 'log{}{}'.format(os.path.sep, INSTANCE)
+        LOG_FILENAME = '{}log{}{}'.format(DATA_DIR, os.path.sep, INSTANCE)
         if not os.path.exists('log'):
             os.makedirs('log')
         LOG = function_logger(logging.DEBUG, LOG_FILENAME, logging.INFO)
