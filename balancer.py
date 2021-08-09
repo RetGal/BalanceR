@@ -1777,9 +1777,6 @@ if __name__ == '__main__':
 
     write_control_file()
 
-    LAST_ORDER = get_closed_order()
-    sys.exit(0)
-
     if CONF.exchange == 'bitmex':
         MIN_ORDER_SIZE = 0.0001
         set_leverage(0)
