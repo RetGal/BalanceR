@@ -311,7 +311,7 @@ def create_mail_content(daily: bool = False):
 
     if not daily:
         trade = ["Last trade", "----------", '\n'.join(trade_part['mail']), '\n\n']
-    performance = ["Performance", "-----------",'\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
+    performance = ["Performance", "-----------", '\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
     if CONF.exchange == 'bitmex':
         start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
     else:
@@ -992,7 +992,7 @@ def get_closed_order():
             result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=10, params={'reverse': True})
         if result:
             closed = [r for r in result if r['status'] != 'canceled']
-            orders = sorted(closed, key=lambda order: closed['datetime'])
+            orders = sorted(closed, key=lambda order: order['datetime'])
             last_order = Order(orders[-1])
             LOG.info('Last %s', str(last_order))
             return last_order
@@ -1776,6 +1776,9 @@ if __name__ == '__main__':
         sys.exit(0)
 
     write_control_file()
+
+    LAST_ORDER = get_closed_order()
+    sys.exit(0)
 
     if CONF.exchange == 'bitmex':
         MIN_ORDER_SIZE = 0.0001

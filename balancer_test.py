@@ -941,7 +941,7 @@ class BalancerTest(unittest.TestCase):
     @patch('balancer.logging')
     @mock.patch.object(ccxt.kraken, 'cancel_order')
     @mock.patch.object(ccxt.kraken, 'fetch_order_status')
-    def test_cancel_orderd__not_found_already_filled(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
+    def test_cancel_orderd_not_found_already_filled(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.test = False
         balancer.LOG = mock_logging
@@ -956,6 +956,32 @@ class BalancerTest(unittest.TestCase):
 
         return1 = balancer.cancel_order(order1)
         self.assertEqual(order1, return1)
+
+    @patch('balancer.logging')
+    @patch('ccxt.kraken')
+    def test_get_closed_orders_should_return_most_recent_order(self, mock_kraken, mock_logging):
+        balancer.CONF = self.create_default_conf()
+        balancer.EXCHANGE = mock_kraken
+        balancer.LOG = mock_logging
+
+        mock_kraken.fetch_closed_orders.return_value = [{'id': 1, 'side': 'buy', 'price': 40400.3, 'amount': 0.00161055, 'status': 'closed', 'datetime': '2021-08-16T16:02:13.214Z'}, {'id': 2, 'side': 'sell', 'price': 42450.1, 'amount': 0.00151015, 'status': 'closed', 'datetime': '2021-08-06T16:02:13.214Z'}]
+
+        last_order = balancer.get_closed_order()
+
+        self.assertEqual(1, last_order.id)
+
+    @patch('balancer.logging')
+    @patch('ccxt.kraken')
+    def test_get_closed_orders_should_filter_canceled(self, mock_kraken, mock_logging):
+        balancer.CONF = self.create_default_conf()
+        balancer.EXCHANGE = mock_kraken
+        balancer.LOG = mock_logging
+
+        mock_kraken.fetch_closed_orders.return_value = [{'id': 1, 'side': 'buy', 'price': 40400.3, 'amount': 0.00161055, 'status': 'canceled', 'datetime': '2021-08-16T16:02:13.214Z'}, {'id': 2, 'side': 'sell', 'price': 42450.1, 'amount': 0.00151015, 'status': 'closed', 'datetime': '2021-08-06T16:02:13.214Z'}]
+
+        last_order = balancer.get_closed_order()
+
+        self.assertEqual(2, last_order.id)
 
     @patch('balancer.logging')
     @patch('ccxt.kraken')
