@@ -993,7 +993,7 @@ def get_closed_order():
             result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=10, params={'reverse': True})
         if result:
             closed = [r for r in result if r['status'] != 'canceled']
-            orders = sorted(closed, key=lambda order: closed['datetime'])
+            orders = sorted(closed, key=lambda order: order['datetime'])
             last_order = Order(orders[-1])
             LOG.info('Last %s', str(last_order))
             return last_order
