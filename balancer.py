@@ -312,7 +312,7 @@ def create_mail_content(daily: bool = False):
 
     if not daily:
         trade = ["Last trade", "----------", '\n'.join(trade_part['mail']), '\n\n']
-    performance = ["Performance", "-----------",'\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
+    performance = ["Performance", "-----------", '\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
     if CONF.exchange == 'bitmex':
         start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
     else:
