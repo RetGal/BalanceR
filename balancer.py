@@ -1832,5 +1832,5 @@ if __name__ == '__main__':
                 else:
                     BAL = calculate_balances()
                     ACTION = meditate(calculate_actual_quote(), BAL['price'])
-        daily_report()
-        sleep_for(CONF.period_in_seconds)
+            daily_report()
+            sleep_for(CONF.period_in_seconds)
