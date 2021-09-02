@@ -49,7 +49,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.1.3'
+            self.bot_version = '1.1.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1070,6 +1070,7 @@ def do_buy(quote: float, amount: float, reference_price: float, attempt: int):
         max_price = last_price('BUY')
         if max_price and max_price < buy_price:
             LOG.info('Not buying @ %s', buy_price)
+            sleep_for(CONF.period_in_seconds)
             return None
         if quote:
             order_size_crypto = calculate_buy_order_size(quote, reference_price, buy_price)
@@ -1077,7 +1078,7 @@ def do_buy(quote: float, amount: float, reference_price: float, attempt: int):
             order_size_fiat = to_bitmex_order_size(amount)
         if order_size_crypto is None and order_size_fiat is None:
             LOG.info('Buy order size below minimum')
-            sleep_for(30, 50)
+            sleep_for(CONF.period_in_seconds)
             return None
         order = create_buy_order(buy_price, order_size_crypto, order_size_fiat)
         if order is None:
@@ -1086,7 +1087,7 @@ def do_buy(quote: float, amount: float, reference_price: float, attempt: int):
                 LOG.warning(order_failed, order_size_crypto)
             elif order_size_fiat:
                 LOG.warning(order_failed, order_size_fiat)
-            sleep_for(30, 50)
+            sleep_for(CONF.period_in_seconds)
             return None
         sleep(CONF.order_adjust_seconds)
         order_status = fetch_order_status(order.id)
@@ -1154,6 +1155,7 @@ def do_sell(quote: float, amount: float, reference_price: float, attempt: int):
         min_price = last_price('SELL')
         if min_price and min_price > sell_price:
             LOG.info('Not selling @ %s', sell_price)
+            sleep_for(CONF.period_in_seconds)
             return None
         if quote:
             order_size_crypto = calculate_sell_order_size(quote, reference_price, sell_price)
@@ -1161,7 +1163,7 @@ def do_sell(quote: float, amount: float, reference_price: float, attempt: int):
             order_size_fiat = to_bitmex_order_size(amount)
         if order_size_crypto is None and order_size_fiat is None:
             LOG.info('Sell order size below minimum')
-            sleep_for(30, 50)
+            sleep_for(CONF.period_in_seconds)
             return None
         order = create_sell_order(sell_price, order_size_crypto, order_size_fiat)
         if order is None:
@@ -1170,7 +1172,7 @@ def do_sell(quote: float, amount: float, reference_price: float, attempt: int):
                 LOG.warning(order_failed, order_size_crypto)
             elif order_size_fiat:
                 LOG.warning(order_failed, order_size_fiat)
-            sleep_for(30, 50)
+            sleep_for(CONF.period_in_seconds)
             return None
         sleep(CONF.order_adjust_seconds)
         order_status = fetch_order_status(order.id)
@@ -1832,7 +1834,5 @@ if __name__ == '__main__':
                 else:
                     BAL = calculate_balances()
                     ACTION = meditate(calculate_actual_quote(), BAL['price'])
-            daily_report()
-            sleep_for(CONF.period_in_seconds)
         daily_report()
         sleep_for(CONF.period_in_seconds)
