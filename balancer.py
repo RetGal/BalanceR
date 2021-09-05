@@ -96,7 +96,7 @@ class ExchangeConfig:
             self.info = str(props['info']).strip('"')
             self.url = 'https://bitcoin-schweiz.ch/bot/'
         except (configparser.NoSectionError, KeyError):
-            raise SystemExit('Invalid configuration for ' + INSTANCE) from KeyError
+            raise SystemExit('Invalid configuration for ' + INSTANCE)
 
 
 class Order:
@@ -442,7 +442,7 @@ def create_report_part_performance(daily: bool):
     margin_balance_of_fiat = get_margin_balance_of_fiat()
     net_deposits = get_net_deposits()
     sleep_for(0, 1)
-    append_performance(part, margin_balance['total'], net_deposits)
+    append_performance(part, margin_balance, net_deposits)
     sleep_for(0, 1)
     append_balances(part, margin_balance, margin_balance_of_fiat, daily)
     return part
@@ -511,7 +511,7 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
             part['csv'].append("{:.4f};% n/a".format(absolute_performance))
 
 
-def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: dict, daily: bool):
+def append_balances(part: dict, margin_balance: float, margin_balance_of_fiat: dict, daily: bool):
     """
     Appends wallet balance, margin balance (including stats), used margin and leverage information, liquidation price
     """
@@ -519,8 +519,7 @@ def append_balances(part: dict, margin_balance: dict, margin_balance_of_fiat: di
     append_wallet_balance(part, price)
     stats = load_statistics()
     if CONF.exchange == 'bitmex':
-        today = calculate_daily_statistics(margin_balance['total'], margin_balance_of_fiat['total'], price, stats,
-                                           daily)
+        today = calculate_daily_statistics(margin_balance, margin_balance_of_fiat['total'], price, stats, daily)
         append_margin_change(part, today)
     else:
         c_bal = get_crypto_balance()
@@ -805,18 +804,19 @@ def set_start_values(values: dict):
 
 def get_margin_balance():
     """
-    Fetches the margin balance (of crypto) in fiat (free and total)
+    Fetches the margin balance (of crypto) in fiat
     return: balance of crypto in fiat
     """
     try:
         if CONF.exchange == 'kraken':
             bal = EXCHANGE.private_post_tradebalance({'asset': CONF.base})['result']
-            bal['free'] = float(bal['mf'])
-            bal['total'] = float(bal['e'])
-            bal['used'] = float(bal['m'])
+            # bal['free'] = float(bal['mf'])
+            return float(bal['e'])
+            # bal['used'] = float(bal['m'])
+        if CONF.exchange == 'bitpanda':
+            return get_crypto_balance()['total'] + get_fiat_balance()['total'] / get_current_price()
         else:
-            bal = get_crypto_balance()
-        return bal
+            return get_crypto_balance()['total']
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         handle_account_errors(str(error.args))
@@ -864,6 +864,8 @@ def get_margin_leverage():
             if hasattr(result, 'ml'):
                 return float(result['ml'])
             return 0
+        if CONF.exchange == 'bitpanda':
+            return 0  # Margin trading unavailable
         LOG.warning("get_margin_leverage() not yet implemented for %s", CONF.exchange)
         return None
 
@@ -895,6 +897,19 @@ def get_net_deposits():
             for withdrawal_id in ledgers:
                 net_deposits += float(ledgers[withdrawal_id]['amount'])
             return net_deposits
+        if CONF.exchange == 'bitpanda':
+            net_deposits = 0
+            net_withdrawals = 0
+            deposits = EXCHANGE.fetch_deposits(CONF.base)
+            for deposit in deposits:
+                net_deposits += deposit['amount']
+            withdrawals = EXCHANGE.fetch_withdrawals(CONF.base)
+            for withdrawal in withdrawals:
+                net_withdrawals += withdrawal['amount']
+            if net_deposits > net_withdrawals:
+                return net_deposits - net_withdrawals
+            else:
+                return 0
         LOG.warning('get_net_deposit() not yet implemented for %s', CONF.exchange)
         return None
 
@@ -926,8 +941,20 @@ def get_wallet_balance(price: float):
                 if fiat > 0:
                     return crypto + (fiat / price)
                 return crypto
-        else:
-            LOG.warning('get_wallet_balance() is not implemented for %s', CONF.exchange)
+        if CONF.exchange == 'bitpanda':
+            balance = 0
+            balances = EXCHANGE.fetch_balance()
+            if balances:
+                if CONF.base in balances and 'total' in balances[CONF.base]:
+                    balance += balances[CONF.base]['total']
+                if CONF.quote in balances and 'total' in balances[CONF.quote]:
+                    fiat = balances[CONF.quote]['total']
+                    if fiat and fiat > 0:
+                        balance += fiat / price
+                return balance
+            LOG.warning('get_net_deposit() could not retrieve bitpanda wallet balance')
+            return 0
+        LOG.warning('get_wallet_balance() is not implemented for %s', CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -1467,13 +1494,19 @@ def get_fiat_balance():
 
 def get_balance(currency: str):
     try:
+        balance_result = {'free': 0, 'used': 0, 'total': 0}
         if CONF.exchange != 'liquid':
-            bal = EXCHANGE.fetch_balance()[currency]
-            if bal['used'] is None:
-                bal['used'] = 0
-            if bal['free'] is None:
-                bal['free'] = 0
-            return bal
+            bal = EXCHANGE.fetch_balance()
+            if currency in bal and bal[currency]:
+                if 'free' in bal[currency]:
+                    balance_result['free'] = bal[currency]['free'] or 0
+                if 'used' in bal[currency]:
+                    balance_result['used'] = bal[currency]['used'] or 0
+                if 'total' in bal[currency]:
+                    balance_result['total'] = bal[currency]['total'] or 0
+            else:
+                LOG.warning('No %s balance found', currency)
+            return balance_result
 
         result = EXCHANGE.private_get_trading_accounts()
         if result:
@@ -1489,11 +1522,7 @@ def get_balance(currency: str):
                 if bal['currency'] == currency:
                     return {'used': 0, 'free': float(bal['balance']), 'total': float(bal['balance'])}
         LOG.warning('Could not get balance for liquid')
-        return None
-
-    except KeyError:
-        LOG.warning('No %s balance found', currency)
-        return {'used': 0, 'free': 0, 'total': 0}
+        return balance_result
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         handle_account_errors(str(error.args))

@@ -872,14 +872,12 @@ class BalancerTest(unittest.TestCase):
         balancer.CONF.base = 'BTC'
         balancer.EXCHANGE = mock_kraken
         balancer.LOG = mock_logging
-        mock_kraken.private_post_tradebalance.return_value = {'result': {'mf': 100, 'e': 150, 'm': 50}}
+        mock_kraken.private_post_tradebalance.return_value = {'result': {'e': 150}}
 
         balance = balancer.get_margin_balance()
 
         mock_kraken.private_post_tradebalance.assert_called()
-        self.assertEqual(50, balance['used'])
-        self.assertEqual(100, balance['free'])
-        self.assertEqual(150, balance['total'])
+        self.assertEqual(150, balance)
 
     @patch('balancer.logging')
     @patch('ccxt.bitmex')
