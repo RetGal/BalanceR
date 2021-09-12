@@ -85,8 +85,15 @@ Container builden
 docker build -t  retgal/balancer:latest .
 ```
 
-BalanceR mit der externen config test.txt starten
+Gebuildeten BalanceR mit der externen config test.txt starten
 
 ```bash
 docker run -it -v /opt/data:/opt/data -e BALANCER_CONFIG="/opt/data/test" --name balancer_test retgal/balancer:latest
+```
+
+Oder dasselbe ohne zu builden mit dem vorgefertigten von Dockerhub: 
+
+```bash
+docker pull dockerocker/balancer
+docker run -it -v /opt/data:/opt/data -e BALANCER_CONFIG="/opt/data/test" --name balancer_test dockerocker/balancer:latest
 ```
