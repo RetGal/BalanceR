@@ -1868,5 +1868,6 @@ if __name__ == '__main__':
                     ACTION = meditate_bitmex(get_current_price())
                 else:
                     BAL = calculate_balances()
+                    ACTION = meditate(calculate_actual_quote(), BAL['price'])
         daily_report()
         sleep_for(CONF.period_in_seconds)
