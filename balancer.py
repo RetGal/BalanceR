@@ -790,7 +790,7 @@ def is_already_written(filename_csv: str):
 
 def set_start_values(values: dict):
     config = configparser.ConfigParser(interpolation=None, allow_no_value=True, comment_prefixes="£", strict=False)
-    config.read(INSTANCE + ".txt")
+    config.read('{}{}.txt'.format(DATA_DIR, INSTANCE))
     config.set('config', 'start_crypto_price', str(values['crypto_price']))
     config.set('config', 'start_margin_balance', str(values['margin_balance']))
     config.set('config', 'start_mayer_multiple', str(values['mayer_multiple']))
