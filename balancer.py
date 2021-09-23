@@ -50,7 +50,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.1.5'
+            self.bot_version = '1.1.6'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1293,7 +1293,7 @@ def cancel_order(order: Order):
         return None
 
     except ccxt.OrderNotFound as error:
-        if 'filled' in str(error.args).lower():
+        if any(e in str(error.args).lower() for e in ['filled', 'cancelorder']):
             return order
         LOG.error('Order to be canceled not found %s %s', str(order), str(error.args))
         return None

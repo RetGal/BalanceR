@@ -950,7 +950,26 @@ class BalancerTest(unittest.TestCase):
 
         return_values = {'s1o': 'open'}
         mock_fetch_order_status.side_effect = return_values.get
-        mock_cancel_order.side_effect = ccxt.OrderNotFound("Order to be canceled not found sell order id: s1o, price: 10000, amount: 100, created: 2021-03-17T09:50:16.746Z ('bitmex cancelOrder() failed: Unable to cancel order due to existing state: Filled'")
+        mock_cancel_order.side_effect = ccxt.OrderNotFound('kraken cancelOrder() error {"error":["EOrder:Unknown order"]}')
+
+        return1 = balancer.cancel_order(order1)
+        self.assertEqual(order1, return1)
+
+    @patch('balancer.logging')
+    @mock.patch.object(ccxt.bitmex, 'cancel_order')
+    @mock.patch.object(ccxt.bitmex, 'fetch_order_status')
+    def test_cancel_orderd_not_found_already_filled_bitmex(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.LOG = mock_logging
+        balancer.EXCHANGE = balancer.connect_to_exchange()
+
+        order1 = balancer.Order({'side': 'sell', 'id': 's1o', 'price': 10000, 'amount': 100,
+                                 'datetime': datetime.datetime.today().isoformat()})
+
+        return_values = {'s1o': 'open'}
+        mock_fetch_order_status.side_effect = return_values.get
+        mock_cancel_order.side_effect = ccxt.OrderNotFound('bitmex cancelOrder() failed: Unable to cancel order due to existing state: Filled')
 
         return1 = balancer.cancel_order(order1)
         self.assertEqual(order1, return1)
