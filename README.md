@@ -74,3 +74,9 @@ Oder dasselbe ohne zu builden mit dem vorgefertigten von Dockerhub:
 docker pull dockerocker/balancer
 docker run -it -v /opt/data:/opt/data -e BALANCER_CONFIG="/opt/data/test" --name balancer_test dockerocker/balancer:latest
 ```
+
+Oder als Einzeiler mittels docker-compose:
+
+```bash
+docker-compose up
+```
