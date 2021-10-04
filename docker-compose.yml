@@ -1,0 +1,22 @@
+services:
+  balancer:
+    environment:
+      - BALANCER_CONFIG=/opt/data/config
+    image: dockerocker/balancer:latest
+    volumes:
+      - datavolume:/opt/data
+    links:
+      - mayer
+  mayer:
+    environment:
+      - MAYER_CONFIG=/opt/data/mayer
+    image: dockerocker/mayer:latest
+    volumes:
+      - datavolume:/opt/data
+volumes:
+  datavolume:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: /opt/data
