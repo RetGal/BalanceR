@@ -50,7 +50,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.1.7'
+            self.bot_version = '1.1.8'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1337,7 +1337,7 @@ def create_sell_order(price: float, amount_crypto: float, amount_fiat: float):
             else:
                 LOG.warning(not_selling, amount_crypto)
             LOG.error(error)
-            sleep_for(CONF.period_in_seconds)
+            sleep_for(CONF.period_in_seconds * 10)
             return None
         handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -1380,7 +1380,7 @@ def create_buy_order(price: float, amount_crypto: float, amount_fiat: float):
             else:
                 LOG.warning(not_buying, amount_crypto)
             LOG.error(error)
-            sleep_for(CONF.period_in_seconds)
+            sleep_for(CONF.period_in_seconds * 10)
             return None
         handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -1415,6 +1415,8 @@ def create_market_sell_order(amount_crypto: float, amount_fiat: float):
                 LOG.warning(not_selling, amount_crypto)
             elif amount_fiat:
                 LOG.warning(not_selling, amount_fiat)
+            LOG.error(error)
+            sleep_for(CONF.period_in_seconds * 10)
             return None
         handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -1451,6 +1453,8 @@ def create_market_buy_order(amount_crypto: float, amount_fiat: float = None):
                 LOG.warning(not_buying, amount_crypto)
             elif amount_fiat:
                 LOG.warning(not_buying, amount_fiat)
+            LOG.error(error)
+            sleep_for(CONF.period_in_seconds * 10)
             return None
         handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
