@@ -50,7 +50,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.1.6'
+            self.bot_version = '1.1.7'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1336,6 +1336,8 @@ def create_sell_order(price: float, amount_crypto: float, amount_fiat: float):
                 LOG.warning(not_selling, amount_fiat)
             else:
                 LOG.warning(not_selling, amount_crypto)
+            LOG.error(error)
+            sleep_for(CONF.period_in_seconds)
             return None
         handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
@@ -1377,6 +1379,8 @@ def create_buy_order(price: float, amount_crypto: float, amount_fiat: float):
                 LOG.warning(not_buying, amount_fiat)
             else:
                 LOG.warning(not_buying, amount_crypto)
+            LOG.error(error)
+            sleep_for(CONF.period_in_seconds)
             return None
         handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
