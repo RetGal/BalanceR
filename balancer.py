@@ -50,7 +50,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.1.8'
+            self.bot_version = '1.1.9'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -303,15 +303,16 @@ def create_mail_content(daily: bool = False):
     """
     if not daily:
         order = ORDER if ORDER else get_closed_order()
-        trade_part = create_report_part_trade(order)
+        trade = ["Last trade", "----------", '\n'.join(create_report_part_trade(order)), '\n\n']
+        text = '\n'.join(trade)
+    else:
+        text = ''
     performance_part = create_report_part_performance(daily)
     start_values_part = create_report_part_start_values()
     advice_part = create_report_part_advice()
     settings_part = create_report_part_settings()
     general_part = create_mail_part_general()
 
-    if not daily:
-        trade = ["Last trade", "----------", '\n'.join(trade_part['mail']), '\n\n']
     performance = ["Performance", "-----------", '\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
     if CONF.exchange == 'bitmex':
         start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
@@ -320,8 +321,6 @@ def create_mail_content(daily: bool = False):
     advice = ["Assessment / advice", "-------------------", '\n'.join(advice_part['mail']), '\n\n']
     settings = ["Your settings", "-------------", '\n'.join(settings_part['mail']), '\n\n']
     general = ["General", "-------", '\n'.join(general_part), '\n\n']
-
-    text = '' if daily else '\n'.join(trade)
 
     if not CONF.info:
         text += '\n'.join(performance) + '\n'.join(start) + '\n'.join(advice) + '\n'.join(settings) + '\n'.join(
@@ -450,8 +449,7 @@ def create_report_part_performance(daily: bool):
 
 
 def create_report_part_trade(last_order: Order):
-    part = {'mail': ["Executed: {:>17}".format(str(last_order))]}
-    return part
+    return ["Executed: {:>17}".format(str(last_order))]
 
 
 def send_mail(subject: str, text: str, attachment: str = None):
@@ -583,11 +581,11 @@ def append_liquidation_price(part: dict):
 
 def append_margin_change(part: dict, today: dict):
     """
-    Appends margin changes
+    Appends crypto margin and fiat position and their change (bitmex only)
     """
     part['labels'].append("Margin {}".format(CONF.base))
     part['labels'].append("Change")
-    part['labels'].append("Margin {}".format(CONF.quote))
+    part['labels'].append("Position {}".format(CONF.quote))
     part['labels'].append("Change")
     m_bal = "Margin balance {}: {:>15.4f}".format(CONF.base, today['mBal'])
     if 'mBalChan24' in today:
@@ -600,7 +598,7 @@ def append_margin_change(part: dict, today: dict):
     part['mail'].append(m_bal)
     part['csv'].append("{:.4f};{}".format(today['mBal'], change))
 
-    fm_bal = "Margin balance {}: {:>15}".format(CONF.quote, round(today['fmBal']))
+    fm_bal = "Position {}: {:>21}".format(CONF.quote, round(today['fmBal']))
     if 'fmBalChan24' in today:
         change = "{:+.2f}%".format(today['fmBalChan24'])
         fm_bal += " ("
