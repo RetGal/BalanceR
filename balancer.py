@@ -536,14 +536,6 @@ def append_balances(part: dict, margin_balance: float, margin_balance_of_fiat: d
     append_price_change(part, today, price)
     append_actual_quote(part, price)
     append_margin_leverage(part)
-    part['labels'].append("Position {}".format(CONF.quote))
-    used_balance = get_used_balance()
-    if used_balance is None:
-        used_balance = 'n/a'
-    else:
-        used_balance = round(used_balance)
-    part['mail'].append("Position {}: {:>21}".format(CONF.quote, used_balance))
-    part['csv'].append("{}".format(used_balance))
     part['labels'].append("Target Position {}".format(CONF.quote))
     if CONF.exchange == 'bitmex':
         target_position = round(calculate_target_position(calculate_target_quote(), price))
