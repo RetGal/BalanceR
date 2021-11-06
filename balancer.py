@@ -933,6 +933,8 @@ def get_wallet_balance(price: float):
             asset = CONF.base if CONF.base != 'BTC' else 'XBt'
             return float(EXCHANGE.private_post_tradebalance({'asset': asset})['result']['tb'])
         if CONF.exchange == 'liquid':
+            fiat = 0
+            crypto = 0
             result = EXCHANGE.private_get_accounts_balance()
             if result:
                 for bal in result:
