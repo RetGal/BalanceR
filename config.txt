@@ -14,6 +14,7 @@ start_crypto_price = 0
 start_margin_balance = 0.0
 start_mayer_multiple = 0.0
 start_date = ""
+reference_net_deposits = 0.0
 #...
 # bot properties
 net_deposits_in_base_currency = 0

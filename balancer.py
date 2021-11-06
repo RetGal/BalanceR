@@ -44,13 +44,13 @@ class ExchangeConfig:
     def __init__(self):
         self.mm_quotes = ['OFF', 'MM', 'MMRange']
         self.report_cadences = ['T', 'D', 'M', 'A']
-        self.mayer_file = '{}mayer.avg'.format(DATA_DIR)
+        self.mayer_file = f'{DATA_DIR}mayer.avg'
         config = configparser.ConfigParser(interpolation=None)
-        config.read('{}{}.txt'.format(DATA_DIR, INSTANCE))
+        config.read(f'{DATA_DIR}{INSTANCE}.txt')
 
         try:
             props = config['config']
-            self.bot_version = '1.1.9'
+            self.bot_version = '1.2.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -62,6 +62,7 @@ class ExchangeConfig:
             self.start_margin_balance = abs(float(props['start_margin_balance']))
             self.start_mayer_multiple = abs(float(props['start_mayer_multiple']))
             self.start_date = str(props['start_date']).strip('"')
+            self.reference_net_deposits = abs(float(props['reference_net_deposits']))
             self.crypto_quote_in_percent = abs(float(props['crypto_quote_in_percent']))
             self.auto_quote = str(props['auto_quote']).strip('"')
             self.mm_quote_0 = abs(float(props['mm_quote_0']))
@@ -81,11 +82,9 @@ class ExchangeConfig:
             self.base = currency[0]
             self.quote = currency[1]
             if self.auto_quote not in self.mm_quotes:
-                raise SystemExit("Invalid value for auto_quote: '{}' possible values are: {}"
-                                 .format(self.auto_quote, self.mm_quotes))
+                raise SystemExit(f"Invalid value for auto_quote: '{self.auto_quote}' possible values are: {self.mm_quotes}")
             if self.report not in self.report_cadences:
-                raise SystemExit("Invalid value for report: '{}' possible values are: {}"
-                                 .format(self.report, self.report_cadences))
+                raise SystemExit(f"Invalid value for report: '{self.report}' possible values are: {self.report_cadences}")
             self.period_in_seconds = round(self.period_in_minutes * 60)
             self.satoshi_factor = 0.00000001
             if config.has_option('config', 'mayer_file'):
@@ -97,7 +96,7 @@ class ExchangeConfig:
             self.info = str(props['info']).strip('"')
             self.url = 'https://bitcoin-schweiz.ch/bot/'
         except (configparser.NoSectionError, KeyError):
-            raise SystemExit('Invalid configuration for ' + INSTANCE)
+            raise SystemExit(f'Invalid configuration for {INSTANCE}')
 
 
 class Order:
@@ -137,8 +136,7 @@ class Order:
             self.datetime = ccxt_order['info']['created_at']
 
     def __str__(self):
-        return "{} order id: {}, price: {}, amount: {}, created: {}".format(self.side, self.id, self.price, self.amount,
-                                                                            self.datetime)
+        return f"{self.side} order id: {self.id}, price: {self.price}, amount: {self.amount}, created: {self.datetime}"
 
 
 class Stats:
@@ -181,8 +179,8 @@ def function_logger(console_level: int, log_file: str = None, file_level: int = 
     logger.addHandler(ch)
 
     if log_file and file_level:
-        fh = RotatingFileHandler("{}.log".format(log_file), mode='a', maxBytes=5 * 1024 * 1024, backupCount=4,
-                                 encoding=None, delay=False)
+        fh = RotatingFileHandler(f"{log_file}.log", mode='a', maxBytes=5 * 1024 * 1024, backupCount=4, encoding=None,
+                                 delay=False)
         fh.setLevel(file_level)
         fh.setFormatter(logging.Formatter('%(asctime)s - %(lineno)4d - %(levelname)-8s - %(message)s'))
         logger.addHandler(fh)
@@ -266,11 +264,11 @@ def daily_report(immediately: bool = False):
     if immediately or datetime.datetime(2012, 1, 17, 12, 25).time() > now.time() \
             > datetime.datetime(2012, 1, 17, 12, 1).time() and EMAIL_SENT != now.day:
         content = create_mail_content(True)
-        filename_csv = '{}{}.csv'.format(DATA_DIR, INSTANCE)
+        filename_csv = f'{DATA_DIR}{INSTANCE}.csv'
         update_csv(content, filename_csv)
         if immediately or is_due_date(datetime.date.today()):
             cadence = "Daily" if CONF.report in ['T', 'D'] else "Monthly" if CONF.report == 'M' else 'Annual'
-            subject = "{} BalanceR report {}".format(cadence, INSTANCE)
+            subject = f"{cadence} BalanceR report {INSTANCE}"
             send_mail(subject, content['text'], filename_csv)
         EMAIL_SENT = now.day
 
@@ -291,7 +289,7 @@ def trade_report():
     Creates a trade report email
     """
     if CONF.report == 'T':
-        subject = "RB Trade report {}".format(INSTANCE)
+        subject = f"RB Trade report {INSTANCE}"
         content = create_mail_content()
         send_mail(subject, content['text'])
 
@@ -740,7 +738,7 @@ def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats:
 
 
 def load_statistics():
-    stats_file = INSTANCE + '.pkl'
+    stats_file = f'{DATA_DIR}{INSTANCE}.pkl'
     if os.path.isfile(stats_file):
         with open(stats_file, "rb") as file:
             return pickle.load(file)
@@ -748,7 +746,7 @@ def load_statistics():
 
 
 def persist_statistics(stats: Stats):
-    stats_file = '{}{}.pkl'.format(DATA_DIR, INSTANCE)
+    stats_file = f'{DATA_DIR}{INSTANCE}.pkl'
     with open(stats_file, "wb") as file:
         pickle.dump(stats, file)
 
@@ -780,17 +778,30 @@ def is_already_written(filename_csv: str):
 
 def set_start_values(values: dict):
     config = configparser.ConfigParser(interpolation=None, allow_no_value=True, comment_prefixes="£", strict=False)
-    config.read('{}{}.txt'.format(DATA_DIR, INSTANCE))
+    config.read(f'{DATA_DIR}{INSTANCE}.txt')
     config.set('config', 'start_crypto_price', str(values['crypto_price']))
     config.set('config', 'start_margin_balance', str(values['margin_balance']))
     config.set('config', 'start_mayer_multiple', str(values['mayer_multiple']))
+    config.set('config', 'reference_net_deposits', str(values['net_deposits']))
+    sv_type = 'Initial'
     if 'date' in values and values['date']:
         config.set('config', 'start_date', str(values['date']))
-        LOG.info('Final start position: price: %s, margin: %s, mayer: %s', values['crypto_price'], values['margin_balance'], values['mayer_multiple'])
-    else:
-        LOG.info('Initial start position: price: %s, margin: %s, mayer: %s', values['crypto_price'], values['margin_balance'], values['mayer_multiple'])
-    with open('{}{}.txt'.format(DATA_DIR, INSTANCE), 'w') as config_file:
+        sv_type = 'Final'
+    LOG.info('%s start position: price: %s, margin: %s, mayer: %s, deposits: %s', sv_type, values['crypto_price'],
+             values['margin_balance'], values['mayer_multiple'], values['net_deposits'])
+    with open(f'{DATA_DIR}{INSTANCE}.txt', 'w') as config_file:
         config.write(config_file)
+
+
+def update_deposits(diff: float, net_deposits: float):
+    new_margin_balance = CONF.start_margin_balance + diff
+    config = configparser.ConfigParser(interpolation=None, allow_no_value=True, comment_prefixes="£", strict=False)
+    config.read(f'{DATA_DIR}{INSTANCE}.txt')
+    config.set('config', 'start_margin_balance', str(new_margin_balance))
+    config.set('config', 'reference_net_deposits', str(net_deposits))
+    with open(f'{DATA_DIR}{INSTANCE}.txt', 'w') as config_file:
+        config.write(config_file)
+    LOG.info('Updated start margin and reference deposits: %s %s (%s)', str(new_margin_balance), str(net_deposits), str(diff))
 
 
 def get_margin_balance():
@@ -867,12 +878,12 @@ def get_margin_leverage():
         return get_margin_leverage()
 
 
-def get_net_deposits():
+def get_net_deposits(from_exchange: bool = False):
     """
     Get deposits and withdraws to calculate the net deposits in crypto.
     return: net deposits
     """
-    if CONF.net_deposits_in_base_currency:
+    if not from_exchange and CONF.net_deposits_in_base_currency:
         return CONF.net_deposits_in_base_currency
     try:
         currency = CONF.base if CONF.base != 'BTC' else 'XBt'
@@ -1064,13 +1075,13 @@ def connect_to_exchange():
         if 'test' in exchange.urls:
             exchange.urls['api'] = exchange.urls['test']
         else:
-            raise SystemExit('Test not supported by {}'.format(CONF.exchange))
+            raise SystemExit(f'Test not supported by {CONF.exchange}')
 
     return exchange
 
 
 def write_control_file():
-    with open('{}{}.pid'.format(DATA_DIR, INSTANCE), 'w') as file:
+    with open(f'{DATA_DIR}{INSTANCE}.pid', 'w') as file:
         file.write(str(os.getpid()) + ' ' + INSTANCE)
 
 
@@ -1738,8 +1749,8 @@ def handle_account_errors(error_message: str):
 
 
 def deactivate_bot(message: str):
-    os.remove('{}{}.pid'.format(DATA_DIR, INSTANCE))
-    text = "Deactivated RB {}".format(INSTANCE)
+    os.remove(f'{DATA_DIR}{INSTANCE}.pid')
+    text = f"Deactivated RB {INSTANCE}"
     LOG.error(text)
     send_mail(text, message)
     sys.exit(0)
@@ -1750,9 +1761,11 @@ def init_bitmex():
     balances = get_balances()
     mayer = get_mayer()
     price = get_current_price()
+    net_deposits = get_net_deposits()
     start_values['crypto_price'] = round(price)
     start_values['margin_balance'] = float(balances['marginBalance']) * CONF.satoshi_factor
     start_values['mayer_multiple'] = mayer['current']
+    start_values['net_deposits'] = net_deposits
     return start_values
 
 
@@ -1760,14 +1773,26 @@ def finit_bitmex():
     start_values = {}
     balances = get_balances()
     mayer = get_mayer()
+    net_deposits = get_net_deposits()
     pos = get_position_info()
     if pos['avgEntryPrice']:
         start_values['crypto_price'] = round(float(pos['avgEntryPrice']))
         start_values['margin_balance'] = float(balances['marginBalance']) * CONF.satoshi_factor
         start_values['mayer_multiple'] = mayer['current']
         start_values['date'] = str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"
+        start_values['net_deposits'] = net_deposits
         return start_values
     return None
+
+
+def check_deposits():
+    if CONF.reference_net_deposits:
+        net_deposits = get_net_deposits(True)
+        diff = net_deposits - CONF.reference_net_deposits
+        if diff != 0:
+            update_deposits(diff, net_deposits)
+            return ExchangeConfig()
+    return CONF
 
 
 if __name__ == '__main__':
@@ -1794,7 +1819,7 @@ if __name__ == '__main__':
     if NO_LOG:
         LOG = function_logger(logging.DEBUG)
     else:
-        LOG_FILENAME = '{}log{}{}'.format(DATA_DIR, os.path.sep, INSTANCE)
+        LOG_FILENAME = f'{DATA_DIR}log{os.path.sep}{INSTANCE}'
         if not os.path.exists('log'):
             os.makedirs('log')
         LOG = function_logger(logging.DEBUG, LOG_FILENAME, logging.INFO)
@@ -1830,6 +1855,7 @@ if __name__ == '__main__':
 
     while 1:
         if CONF.exchange == 'bitmex':
+            CONF = check_deposits()
             ACTION = meditate_bitmex(get_current_price())
         else:
             BAL = calculate_balances()
@@ -1863,6 +1889,7 @@ if __name__ == '__main__':
                     sleep_for(CONF.period_in_seconds)
                 ATTEMPT += 1
                 if CONF.exchange == 'bitmex':
+                    CONF = check_deposits()
                     ACTION = meditate_bitmex(get_current_price())
                 else:
                     BAL = calculate_balances()

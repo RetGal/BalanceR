@@ -1267,6 +1267,58 @@ class BalancerTest(unittest.TestCase):
         mock_kraken.fetch_deposits.assert_not_called()
         self.assertEqual(balancer.CONF.net_deposits_in_base_currency, net_deposit)
 
+    @mock.patch.object(balancer, 'ExchangeConfig')
+    @patch('balancer.update_deposits')
+    def test_check_net_deposits_without_reference_net_deposit(self, mock_update_deposits, mock_exchange_config):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.reference_net_deposits = 0.0
+
+        balancer.check_deposits()
+
+        mock_update_deposits.assert_not_called()
+
+    @mock.patch.object(balancer, 'ExchangeConfig')
+    @patch('balancer.update_deposits')
+    @patch('balancer.get_net_deposits', return_value=1.5)
+    def test_check_net_deposits_deposit(self, mock_get_net_deposits, mock_update_deposits, mock_exchange_config):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.reference_net_deposits = 1.0
+
+        balancer.check_deposits()
+
+        mock_update_deposits.assert_called_with(0.5, 1.5)
+
+    @mock.patch.object(balancer, 'ExchangeConfig')
+    @patch('balancer.update_deposits')
+    @patch('balancer.get_net_deposits', return_value=1)
+    def test_check_net_deposits_withdraw(self, mock_get_net_deposits, mock_update_deposits, mock_exchange_config):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.reference_net_deposits = 1.5
+
+        balancer.check_deposits()
+
+        mock_update_deposits.assert_called_with(-0.5, 1)
+
+    @patch('balancer.logging')
+    @patch('configparser.ConfigParser')
+    @patch('configparser.ConfigParser.read')
+    def test_update_deposits(self, mock_conf_read, mock_configparser, mock_logging):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.start_margin_balance = 2
+        balancer.INSTANCE = ''
+        balancer.DATA_DIR = ''
+        balancer.LOG = mock_logging
+        diff = -0.05
+        net_deposits = 1.05
+
+        balancer.update_deposits(diff, net_deposits)
+
+        mock_logging.info.assert_called_with('Updated start margin and reference deposits: %s %s (%s)', str(1.95), str(net_deposits), str(diff))
+
     @patch('balancer.logging')
     @patch('balancer.deactivate_bot')
     def test_handle_account_errors_miss(self, mock_deactivate_bot, mock_logging):
@@ -1355,7 +1407,8 @@ class BalancerTest(unittest.TestCase):
         conf.start_crypto_price = 20000
         conf.start_margin_balance = 0.4
         conf.start_mayer_multiple = 1.3
-        conf.start_date = ""
+        conf.start_date = ''
+        conf.reference_net_deposits = 0.0
         conf.net_deposits_in_base_currency = 0
         conf.base = 'BTC'
         conf.quote = 'EUR'
