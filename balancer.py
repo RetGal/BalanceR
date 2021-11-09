@@ -50,7 +50,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.2.0'
+            self.bot_version = '1.2.1'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -793,7 +793,7 @@ def set_start_values(values: dict):
         config.write(config_file)
 
 
-def update_deposits(diff: float, net_deposits: float):
+def update_deposits(net_deposits: float, diff: float = 0):
     new_margin_balance = CONF.start_margin_balance + diff
     config = configparser.ConfigParser(interpolation=None, allow_no_value=True, comment_prefixes="£", strict=False)
     config.read(f'{DATA_DIR}{INSTANCE}.txt')
@@ -801,7 +801,10 @@ def update_deposits(diff: float, net_deposits: float):
     config.set('config', 'reference_net_deposits', str(net_deposits))
     with open(f'{DATA_DIR}{INSTANCE}.txt', 'w') as config_file:
         config.write(config_file)
-    LOG.info('Updated start margin and reference deposits: %s %s (%s)', str(new_margin_balance), str(net_deposits), str(diff))
+    if diff:
+        LOG.info('Updated start margin and reference deposits: %s %s (%s)', str(new_margin_balance), str(net_deposits), str(diff))
+    else:
+        LOG.info('Initialized reference deposits: %s', str(net_deposits))
 
 
 def get_margin_balance():
@@ -1788,12 +1791,15 @@ def finit_bitmex():
 
 
 def check_deposits():
+    net_deposits = get_net_deposits(True)
     if CONF.reference_net_deposits:
-        net_deposits = get_net_deposits(True)
         diff = net_deposits - CONF.reference_net_deposits
         if diff != 0:
-            update_deposits(diff, net_deposits)
+            update_deposits(net_deposits, diff)
             return ExchangeConfig()
+    else:
+        update_deposits(net_deposits)
+        return ExchangeConfig()
     return CONF
 
 
