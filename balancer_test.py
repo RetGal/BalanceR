@@ -1277,7 +1277,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.check_deposits()
 
-        mock_update_deposits.assert_called_with(0, 1.5)
+        mock_update_deposits.assert_called_with(1.5)
 
     @mock.patch.object(balancer, 'ExchangeConfig')
     @patch('balancer.update_deposits')
@@ -1289,7 +1289,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.check_deposits()
 
-        mock_update_deposits.assert_called_with(0.5, 1.5)
+        mock_update_deposits.assert_called_with(1.5, 0.5)
 
     @mock.patch.object(balancer, 'ExchangeConfig')
     @patch('balancer.update_deposits')
@@ -1301,7 +1301,7 @@ class BalancerTest(unittest.TestCase):
 
         balancer.check_deposits()
 
-        mock_update_deposits.assert_called_with(-0.5, 1)
+        mock_update_deposits.assert_called_with(1, -0.5)
 
     @patch('balancer.logging')
     @patch('configparser.ConfigParser')
