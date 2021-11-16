@@ -50,7 +50,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.2.1'
+            self.bot_version = '1.2.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -892,7 +892,7 @@ def get_net_deposits(from_exchange: bool = False):
         currency = CONF.base if CONF.base != 'BTC' else 'XBt'
         if CONF.exchange == 'bitmex':
             result = EXCHANGE.private_get_user_wallet({'currency': currency})
-            return (float(result['deposited']) - float(result['withdrawn'])) * CONF.satoshi_factor
+            return (int(result['deposited']) + int(result['transferIn']) - int(result['withdrawn']) - int(result['transferOut'])) * CONF.satoshi_factor
         if CONF.exchange == 'kraken':
             net_deposits = 0
             deposits = EXCHANGE.fetch_deposits(CONF.base)
@@ -922,7 +922,7 @@ def get_net_deposits(from_exchange: bool = False):
         handle_account_errors(str(error.args))
         LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
         sleep_for(4, 6)
-        return get_net_deposits()
+        return get_net_deposits(from_exchange)
 
 
 def get_wallet_balance(price: float):

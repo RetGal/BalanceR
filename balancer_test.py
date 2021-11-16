@@ -1336,7 +1336,6 @@ class BalancerTest(unittest.TestCase):
 
         mock_logging.info.assert_called_with('Initialized reference deposits: %s', str(net_deposits))
 
-
     @patch('balancer.logging')
     @patch('balancer.deactivate_bot')
     def test_handle_account_errors_miss(self, mock_deactivate_bot, mock_logging):
