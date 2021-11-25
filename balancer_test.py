@@ -1311,15 +1311,35 @@ class BalancerTest(unittest.TestCase):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.start_margin_balance = 2
+        balancer.CONF.net_deposits_in_base_currency = 0
         balancer.INSTANCE = ''
         balancer.DATA_DIR = ''
         balancer.LOG = mock_logging
         diff = -0.05
-        net_deposits = 1.05
+        reference_deposits = 1.05
 
-        balancer.update_deposits(net_deposits, diff)
+        balancer.update_deposits(reference_deposits, diff)
 
-        mock_logging.info.assert_called_with('Updated start margin and reference deposits: %s %s (%s)', str(1.95), str(net_deposits), str(diff))
+        mock_logging.info.assert_called_with('Updated start margin and reference deposits: %s %s (%s)', str(1.95), str(reference_deposits), str(diff))
+
+    @patch('balancer.logging')
+    @patch('configparser.ConfigParser')
+    @patch('configparser.ConfigParser.read')
+    def test_update_reference_deposits_and_net_deposits(self, mock_conf_read, mock_configparser, mock_logging):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.start_margin_balance = 2
+        balancer.CONF.net_deposits_in_base_currency = 1
+        balancer.INSTANCE = ''
+        balancer.DATA_DIR = ''
+        balancer.LOG = mock_logging
+        diff = -0.05
+        reference_deposits = 1.05
+
+        balancer.update_deposits(reference_deposits, diff)
+
+        mock_logging.info.assert_called_with('Updated start margin, reference and net deposits: %s %s %s (%s)', str(1.95), str(reference_deposits), str(0.95), str(diff))
+
 
     @patch('balancer.logging')
     @patch('configparser.ConfigParser')
