@@ -849,6 +849,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('T', balancer.CONF.report)
         self.assertEqual(50, balancer.CONF.crypto_quote_in_percent)
         self.assertEqual('Test', balancer.CONF.info)
+        self.assertEqual('', balancer.CONF.start_date)
 
     @patch('balancer.logging')
     @mock.patch.object(ccxt.kraken, 'fetch_balance')

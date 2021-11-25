@@ -61,7 +61,7 @@ class ExchangeConfig:
             self.start_crypto_price = abs(int(props['start_crypto_price']))
             self.start_margin_balance = abs(float(props['start_margin_balance']))
             self.start_mayer_multiple = abs(float(props['start_mayer_multiple']))
-            self.start_date = str(props['start_date']).strip('"')
+            self.start_date = str(props['start_date']).strip('"').strip()
             self.reference_net_deposits = abs(float(props['reference_net_deposits']))
             self.crypto_quote_in_percent = abs(float(props['crypto_quote_in_percent']))
             self.auto_quote = str(props['auto_quote']).strip('"')

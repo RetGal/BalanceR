@@ -13,7 +13,7 @@ symbol = "XBTUSD"
 start_crypto_price = 0
 start_margin_balance = 0.0
 start_mayer_multiple = 0.0
-start_date = ""
+start_date = " "
 reference_net_deposits = 0.0
 #...
 # bot properties
