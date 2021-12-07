@@ -1873,8 +1873,6 @@ if __name__ == '__main__':
     if not INIT and CONF.backtrade_only_on_profit:
         LAST_ORDER = get_closed_order()
 
-    foo = get_net_deposits(True)
-
     while 1:
         if CONF.exchange == 'bitmex':
             CONF = check_deposits()
