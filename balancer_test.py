@@ -1439,6 +1439,7 @@ class BalancerTest(unittest.TestCase):
         conf.exchange = 'kraken'
         conf.api_key = '1234'
         conf.api_secret = 'secret'
+        conf.api_password = ''
         conf.test = True
         conf.pair = 'BTC/EUR'
         conf.symbol = 'XBTEUR'

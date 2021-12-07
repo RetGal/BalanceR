@@ -3,6 +3,8 @@
 exchange = "bitmex"
 api_key = "YOUR_KEY"
 api_secret = "YOUR_SECRET"
+# required for coinbasepro
+api_password = ""
 test = True
 #.
 # currency properties

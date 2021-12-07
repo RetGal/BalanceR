@@ -45,15 +45,18 @@ class ExchangeConfig:
         self.mm_quotes = ['OFF', 'MM', 'MMRange']
         self.report_cadences = ['T', 'D', 'M', 'A']
         self.mayer_file = f'{DATA_DIR}mayer.avg'
+        self.api_password = ''
         config = configparser.ConfigParser(interpolation=None)
         config.read(f'{DATA_DIR}{INSTANCE}.txt')
 
         try:
             props = config['config']
-            self.bot_version = '1.2.3'
+            self.bot_version = '1.2.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
+            if config.has_option('config', 'api_password'):
+                self.api_password = str(props['api_password']).strip('"')
             self.test = bool(str(props['test']).strip('"').lower() == 'true')
             self.pair = str(props['pair']).strip('"')
             self.symbol = str(props['symbol']).strip('"')
@@ -910,7 +913,7 @@ def get_net_deposits(from_exchange: bool = False):
             for withdrawal_id in ledgers:
                 net_deposits += float(ledgers[withdrawal_id]['amount'])
             return net_deposits
-        if CONF.exchange == 'bitpanda':
+        if CONF.exchange in ['bitpanda', 'coinbasepro']:
             net_deposits = 0
             net_withdrawals = 0
             deposits = EXCHANGE.fetch_deposits(CONF.base)
@@ -1081,6 +1084,7 @@ def connect_to_exchange():
         'enableRateLimit': True,
         'apiKey': CONF.api_key,
         'secret': CONF.api_secret,
+        'password': CONF.api_password
         # 'verbose': True,
     })
 
@@ -1868,6 +1872,8 @@ if __name__ == '__main__':
 
     if not INIT and CONF.backtrade_only_on_profit:
         LAST_ORDER = get_closed_order()
+
+    foo = get_net_deposits(True)
 
     while 1:
         if CONF.exchange == 'bitmex':
