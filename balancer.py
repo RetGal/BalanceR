@@ -51,7 +51,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.2.4'
+            self.bot_version = '1.2.5'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1856,6 +1856,9 @@ if __name__ == '__main__':
         sys.exit(0)
 
     write_control_file()
+
+    if CONF.exchange == 'coinbasepro':
+        MIN_ORDER_SIZE = 0.000016
 
     if CONF.exchange == 'bitmex':
         MIN_ORDER_SIZE = 0.0001
