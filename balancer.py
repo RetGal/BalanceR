@@ -38,6 +38,7 @@ STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low'
 ACCOUNT_ERRORS = ['account has been disabled', 'key is disabled', 'authentication failed', 'permission denied',
                   'invalid api key', 'access denied']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
+NOT_IMPLEMENTED_MESSAGE = '%s is not implemented for %s'
 
 
 class ExchangeConfig:
@@ -51,7 +52,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.2.6'
+            self.bot_version = '1.2.7'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -440,12 +441,11 @@ def create_report_part_advice():
 def create_report_part_performance(daily: bool):
     part = {'mail': [], 'csv': [], 'labels': []}
     margin_balance = get_margin_balance()
-    margin_balance_of_fiat = get_margin_balance_of_fiat()
     net_deposits = get_net_deposits()
     sleep_for(0, 1)
     append_performance(part, margin_balance, net_deposits)
     sleep_for(0, 1)
-    append_balances(part, margin_balance, margin_balance_of_fiat, daily)
+    append_balances(part, margin_balance, daily)
     return part
 
 
@@ -512,7 +512,7 @@ def append_performance(part: dict, margin_balance: float, net_deposits: float):
             part['csv'].append("{:.4f};n/a".format(absolute_performance))
 
 
-def append_balances(part: dict, margin_balance: float, margin_balance_of_fiat: dict, daily: bool):
+def append_balances(part: dict, margin_balance: float, daily: bool):
     """
     Appends wallet balance, margin balance (including stats), used margin and leverage information, liquidation price
     """
@@ -520,6 +520,7 @@ def append_balances(part: dict, margin_balance: float, margin_balance_of_fiat: d
     append_wallet_balance(part, price)
     stats = load_statistics()
     if CONF.exchange == 'bitmex':
+        margin_balance_of_fiat = get_margin_balance_of_fiat()
         today = calculate_daily_statistics(margin_balance, margin_balance_of_fiat['total'], price, stats, daily)
         append_margin_change(part, today)
     else:
@@ -838,8 +839,7 @@ def get_margin_balance():
             # bal['used'] = float(bal['m'])
         if CONF.exchange in ['bitpanda', 'coinbasepro']:
             return get_crypto_balance()['total'] + get_fiat_balance()['total'] / get_current_price()
-        else:
-            return get_crypto_balance()['total']
+        return get_crypto_balance()['total']
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         handle_account_errors(str(error.args))
@@ -850,23 +850,16 @@ def get_margin_balance():
 
 def get_margin_balance_of_fiat():
     """
-    Fetches the margin balance (of fiat) in fiat (free and total)
+    Fetches the margin balance (of fiat) in fiat
     return: balance of fiat in fiat
     """
     try:
-        if CONF.exchange == 'kraken':
-            bal = EXCHANGE.private_post_tradebalance({'asset': CONF.quote})['result']
-            bal['free'] = float(bal['mf'])
-            bal['total'] = float(bal['e'])
-            bal['used'] = float(bal['m'])
-        elif CONF.exchange == 'bitmex':
+        if CONF.exchange == 'bitmex':
             pos = get_position_info()
             if not pos or not pos['lastPrice']:
                 return {'total': 0}
             return {'total': float(pos['homeNotional']) * float(pos['lastPrice'])}
-        else:
-            bal = get_fiat_balance()
-        return bal
+        LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_margin_balance_of_fiat()', CONF.exchange)
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
         handle_account_errors(str(error.args))
@@ -889,7 +882,7 @@ def get_margin_leverage():
             return 0
         if CONF.exchange == 'bitpanda':
             return 0  # Margin trading unavailable
-        LOG.warning("get_margin_leverage() not yet implemented for %s", CONF.exchange)
+        LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_margin_leverage()', CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -931,9 +924,8 @@ def get_net_deposits(from_exchange: bool = False):
                 net_withdrawals += withdrawal['amount']
             if net_deposits > net_withdrawals:
                 return net_deposits - net_withdrawals
-            else:
-                return 0
-        LOG.warning('get_net_deposit() not yet implemented for %s', CONF.exchange)
+            return 0
+        LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_net_deposit()', CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -979,7 +971,7 @@ def get_wallet_balance(price: float):
                 return balance
             LOG.warning('get_net_deposit() could not retrieve bitpanda wallet balance')
             return 0
-        LOG.warning('get_wallet_balance() is not implemented for %s', CONF.exchange)
+        LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_wallet_balance()', CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -996,7 +988,7 @@ def get_balances():
     try:
         if CONF.exchange == 'bitmex':
             return EXCHANGE.fetch_balance()['info'][0]
-        LOG.warning('get_balances() is not implemented for %s', CONF.exchange)
+        LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_balances()', CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -1572,7 +1564,7 @@ def get_position_info():
             if position:
                 return position[0]
             return None
-        LOG.warning('get_postion_info() is not implemented for %s', CONF.exchange)
+        LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_postion_info()', CONF.exchange)
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
