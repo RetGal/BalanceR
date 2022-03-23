@@ -1584,7 +1584,7 @@ def set_leverage(new_leverage: float):
         return None
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
-        if 'zero margin balance' in str(error.args):
+        if 'Account has zero' in str(error.args):
             LOG.warning('Account not funded yet, retrying in 20 minutes')
             sleep_for(1200)
         if any(e in str(error.args) for e in ['Forbidden']):
