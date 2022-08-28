@@ -33,7 +33,7 @@ KEEP_ORDERS = False
 NO_LOG = False
 DATA_DIR = ''
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
-STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'not_enough', 'below',
+STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'too small', 'not_enough', 'below',
                'exceeds account', 'price', 'nvalid arg', 'nvalid orderQty']
 ACCOUNT_ERRORS = ['account has been disabled', 'key is disabled', 'authentication failed', 'permission denied',
                   'invalid api key', 'access denied']
@@ -52,7 +52,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.2.7'
+            self.bot_version = '1.2.8'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
