@@ -52,7 +52,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.2.8'
+            self.bot_version = '1.2.9'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -856,9 +856,9 @@ def get_margin_balance_of_fiat():
     try:
         if CONF.exchange == 'bitmex':
             pos = get_position_info()
-            if not pos or not pos['lastPrice']:
+            if not pos or not pos['markPrice']:
                 return {'total': 0}
-            return {'total': float(pos['homeNotional']) * float(pos['lastPrice'])}
+            return {'total': float(pos['homeNotional']) * float(pos['markPrice'])}
         LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_margin_balance_of_fiat()', CONF.exchange)
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
@@ -1716,7 +1716,7 @@ def calculate_balances():
             pos = get_position_info()
         # aka margin balance
         balance['totalBalanceInCrypto'] = get_crypto_balance()['total']
-        balance['price'] = float(pos['lastPrice'])
+        balance['price'] = float(pos['markPrice'])
         if not balance['price']:
             balance['price'] = get_current_price()
         if pos['avgEntryPrice']:
