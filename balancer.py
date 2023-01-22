@@ -31,6 +31,7 @@ EMAIL_SENT = False
 EMAIL_ONLY = False
 KEEP_ORDERS = False
 NO_LOG = False
+SIMULATE = False
 DATA_DIR = ''
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'too small', 'not_enough', 'below',
@@ -52,7 +53,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.2.9'
+            self.bot_version = '1.3.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1832,6 +1833,8 @@ if __name__ == '__main__':
                 KEEP_ORDERS = True
             if '-nolog' in sys.argv:
                 NO_LOG = True
+            if '-simulate' in sys.argv:
+                SIMULATE = True
     else:
         INSTANCE = os.path.basename(input('Filename with API Keys (config): ') or 'config')
 
@@ -1854,7 +1857,8 @@ if __name__ == '__main__':
         daily_report(True)
         sys.exit(0)
 
-    write_control_file()
+    if not SIMULATE:
+        write_control_file()
 
     if CONF.exchange == 'coinbasepro':
         MIN_ORDER_SIZE = 0.000016
@@ -1882,6 +1886,9 @@ if __name__ == '__main__':
         else:
             BAL = calculate_balances()
             ACTION = meditate(calculate_actual_quote(), BAL['price'])
+        if SIMULATE:
+            print(ACTION)
+            break
         ATTEMPT: int = 1 if not INIT else CONF.trade_trials + 1
         while ACTION:
             if is_nonprofit_trade(LAST_ORDER, ACTION):
