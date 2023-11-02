@@ -531,7 +531,7 @@ def append_balances(part: dict, margin_balance: float, daily: bool):
         fiat_total = f_bal['total'] if f_bal else 0
         today = calculate_daily_statistics(crypto_total, fiat_total, price, stats, daily)
         append_balance_change(part, today)
-    yesterday = None if not stats else stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
+    yesterday = None if stats is None else stats.get_day(int(datetime.date.today().strftime("%Y%j")) - 1)
     append_value_change(part, today, yesterday, price)
     append_trading_result(part, today, yesterday, price)
     append_price_change(part, today, price)
