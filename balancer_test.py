@@ -1,6 +1,7 @@
 import datetime
 import time
 import unittest
+from math import isclose
 from unittest import mock
 from unittest.mock import patch
 
@@ -748,7 +749,7 @@ class BalancerTest(unittest.TestCase):
         stats.add_day(int(datetime.date.today().strftime("%Y%j")), same_day)
 
         day = stats.get_day(int(datetime.date.today().strftime("%Y%j")))
-        self.assertTrue(day['mBal'] == 0.999)
+        self.assertTrue(isclose(day['mBal'], 0.999, rel_tol=1e-09, abs_tol=1e-09))
         self.assertTrue(day['price'] == 10000)
 
     def test_stats_add_day_removes_oldest(self):
@@ -775,7 +776,7 @@ class BalancerTest(unittest.TestCase):
 
         self.assertTrue(today['mBal'] == 90)
         self.assertTrue(today['fmBal'] == 110)
-        self.assertTrue(today['price'] == 8000.0)
+        self.assertTrue(isclose(today['price'], 8000.0, rel_tol=1e-09, abs_tol=1e-09))
         mock_persist_statistics.assert_not_called()
 
     def test_calculate_statistics_positive_change(self):
