@@ -4,7 +4,7 @@
 
 ## Voraussetzungen
 
-*BalanceR* setzt *Python* Version 3.6 oder neuer voraus.
+*BalanceR* setzt *Python* Version 3.8 oder neuer voraus.
 Im Kern verwendet *BalanceR* die [ccxt](https://github.com/ccxt/ccxt) Bibliothek. Diese gilt es mittels [pip](https://pypi.org/project/pip/) zu installieren:
 
 `python -m pip install -r requirements.txt`
