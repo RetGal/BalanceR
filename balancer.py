@@ -1006,6 +1006,8 @@ def get_open_orders():
             orders = EXCHANGE.private_get_user_orders({'active': True})
         elif CONF.exchange == 'binance':
             orders = EXCHANGE.fetch_open_orders(CONF.pair, since=None, limit=20)
+        elif CONF.exchange == 'bitmex':
+            orders = EXCHANGE.fetch_open_orders(CONF.symbol, since=None, limit=20, params={'reverse': True})
         else:
             orders = EXCHANGE.fetch_open_orders(CONF.pair, since=None, limit=20, params={'reverse': True})
         if orders:
@@ -1053,7 +1055,7 @@ def get_current_price(pair: str = None, attempts: int = 0, limit: int = None):
     In case of failure, the function calls itself again until success
     :return: int current market price
     """
-    pair = CONF.pair if not pair else pair
+    pair = CONF.symbol if CONF.exchange == 'bitmex' else CONF.pair if not pair else pair
     try:
         price = EXCHANGE.fetch_ticker(pair)['bid']
         if not price:
