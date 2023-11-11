@@ -53,7 +53,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.3.2'
+            self.bot_version = '1.3.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1032,6 +1032,8 @@ def get_closed_order():
     try:
         if CONF.exchange in ['kraken', 'liquid']:
             result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=10)
+        elif CONF.exchange == 'bitmex':
+            result = EXCHANGE.fetch_closed_orders(CONF.symbol, since=None, limit=10, params={'reverse': True})
         else:
             result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=10, params={'reverse': True})
         if result:
@@ -1339,7 +1341,7 @@ def create_sell_order(price: float, amount_crypto: float, amount_fiat: float):
             amount_fiat = to_bitmex_order_size(amount_fiat)
             if not amount_fiat:
                 return None
-            new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_fiat, price)
+            new_order = EXCHANGE.create_limit_sell_order(CONF.symbol, amount_fiat, price)
         else:
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price)
         norder = Order(new_order)
@@ -1379,7 +1381,7 @@ def create_buy_order(price: float, amount_crypto: float, amount_fiat: float):
             amount_fiat = to_bitmex_order_size(amount_fiat)
             if not amount_fiat:
                 return None
-            new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_fiat, price)
+            new_order = EXCHANGE.create_limit_buy_order(CONF.symbol, amount_fiat, price)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price, {'oflags': 'fcib'})
         else:
@@ -1418,7 +1420,7 @@ def create_market_sell_order(amount_crypto: float, amount_fiat: float):
             amount_fiat = to_bitmex_order_size(amount_fiat)
             if not amount_fiat:
                 return None
-            new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_fiat)
+            new_order = EXCHANGE.create_market_sell_order(CONF.symbol, amount_fiat)
         else:
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_crypto)
         norder = Order(new_order)
@@ -1454,7 +1456,7 @@ def create_market_buy_order(amount_crypto: float, amount_fiat: float = None):
             amount_fiat = to_bitmex_order_size(amount_fiat)
             if not amount_fiat:
                 return None
-            new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_fiat)
+            new_order = EXCHANGE.create_market_buy_order(CONF.symbol, amount_fiat)
         elif CONF.exchange == 'kraken':
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'oflags': 'fcib'})
         else:
