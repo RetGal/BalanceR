@@ -53,7 +53,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.3.1'
+            self.bot_version = '1.3.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -141,7 +141,7 @@ class Order:
             self.datetime = ccxt_order['info']['created_at']
 
     def __str__(self):
-        return f"{self.side} order id: {self.id}, price: {self.price}, amount: {self.amount}, created: {self.datetime}"
+        return f"{self.side}, price: {self.price}, amount: {self.amount}, order id: {self.id}, created: {self.datetime}"
 
 
 class Stats:
