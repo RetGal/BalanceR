@@ -53,7 +53,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.3.4'
+            self.bot_version = '1.3.5'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -110,7 +110,7 @@ class Order:
     """
     __slots__ = 'id', 'price', 'amount', 'side', 'datetime'
 
-    def __init__(self, ccxt_order):
+    def __init__(self, ccxt_order, amount_fiat: float = None):
         if 'id' in ccxt_order:
             self.id = ccxt_order['id']
         elif 'uuid' in ccxt_order:
@@ -123,14 +123,14 @@ class Order:
 
         if 'amount' in ccxt_order:
             if CONF.exchange == 'bitmex':
-                self.amount = ccxt_order['amount'] if (not ccxt_order['amount'] or \
+                self.amount = amount_fiat if amount_fiat is not None else ccxt_order['amount'] if (not ccxt_order['amount'] or \
                               ccxt_order['amount'] >= MIN_FIAT_ORDER_SIZE or not ccxt_order['price']) \
                               else round(ccxt_order['price'] * ccxt_order['amount'])
             else:
                 self.amount = ccxt_order['amount']
         elif 'info' in ccxt_order:
             if CONF.exchange == 'bitmex':
-                self.amount = ccxt_order['info']['amount'] if (not ccxt_order['info']['amount'] or \
+                self.amount = amount_fiat if amount_fiat is not None else ccxt_order['info']['amount'] if (not ccxt_order['info']['amount'] or \
                               ccxt_order['info']['amount'] >= MIN_FIAT_ORDER_SIZE or not ccxt_order['info']['price']) \
                               else round(ccxt_order['info']['price'] * ccxt_order['info']['amount'])
             else:
@@ -1354,7 +1354,7 @@ def create_sell_order(price: float, amount_crypto: float, amount_fiat: float):
             new_order = EXCHANGE.create_limit_sell_order(CONF.symbol, amount_fiat, price)
         else:
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price)
-        norder = Order(new_order)
+        norder = Order(new_order, amount_fiat)
         LOG.info('Created %s', str(norder))
         return norder
 
@@ -1397,7 +1397,7 @@ def create_buy_order(price: float, amount_crypto: float, amount_fiat: float):
         else:
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price)
 
-        norder = Order(new_order)
+        norder = Order(new_order, amount_fiat)
         LOG.info('Created %s', str(norder))
         return norder
 
@@ -1433,7 +1433,7 @@ def create_market_sell_order(amount_crypto: float, amount_fiat: float):
             new_order = EXCHANGE.create_market_sell_order(CONF.symbol, amount_fiat)
         else:
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_crypto)
-        norder = Order(new_order)
+        norder = Order(new_order, amount_fiat)
         LOG.info('Created market %s', str(norder))
         return norder
 
@@ -1471,7 +1471,7 @@ def create_market_buy_order(amount_crypto: float, amount_fiat: float = None):
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'oflags': 'fcib'})
         else:
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto)
-        norder = Order(new_order)
+        norder = Order(new_order, amount_fiat)
         LOG.info('Created market %s', str(norder))
         return norder
 
