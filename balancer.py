@@ -53,7 +53,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.3.3'
+            self.bot_version = '1.3.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -122,9 +122,19 @@ class Order:
             self.price = ccxt_order['info']['price'] if not ccxt_order['info']['price'] else round(ccxt_order['info']['price'])
 
         if 'amount' in ccxt_order:
-            self.amount = ccxt_order['amount']
+            if CONF.exchange == 'bitmex':
+                self.amount = ccxt_order['amount'] if (not ccxt_order['amount'] or \
+                              ccxt_order['amount'] >= MIN_FIAT_ORDER_SIZE or not ccxt_order['price']) \
+                              else round(ccxt_order['price'] * ccxt_order['amount'])
+            else:
+                self.amount = ccxt_order['amount']
         elif 'info' in ccxt_order:
-            self.amount = ccxt_order['info']['amount']
+            if CONF.exchange == 'bitmex':
+                self.amount = ccxt_order['info']['amount'] if (not ccxt_order['info']['amount'] or \
+                              ccxt_order['info']['amount'] >= MIN_FIAT_ORDER_SIZE or not ccxt_order['info']['price']) \
+                              else round(ccxt_order['info']['price'] * ccxt_order['info']['amount'])
+            else:
+                self.amount = ccxt_order['info']['amount']
 
         if 'side' in ccxt_order:
             self.side = ccxt_order['side']
