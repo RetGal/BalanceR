@@ -1307,8 +1307,7 @@ class BalancerTest(unittest.TestCase):
 
     @patch('balancer.logging')
     @patch('configparser.ConfigParser')
-    @patch('configparser.ConfigParser.read')
-    def test_update_deposits(self, mock_conf_read, mock_configparser, mock_logging):
+    def test_update_deposits(self, mock_configparser, mock_logging):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.start_margin_balance = 2
@@ -1325,8 +1324,7 @@ class BalancerTest(unittest.TestCase):
 
     @patch('balancer.logging')
     @patch('configparser.ConfigParser')
-    @patch('configparser.ConfigParser.read')
-    def test_update_reference_deposits_and_net_deposits(self, mock_conf_read, mock_configparser, mock_logging):
+    def test_update_reference_deposits_and_net_deposits(self, mock_configparser, mock_logging):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.start_margin_balance = 2
@@ -1343,8 +1341,7 @@ class BalancerTest(unittest.TestCase):
 
     @patch('balancer.logging')
     @patch('configparser.ConfigParser')
-    @patch('configparser.ConfigParser.read')
-    def test_update_deposits_with_zero_difference(self, mock_conf_read, mock_configparser, mock_logging):
+    def test_update_deposits_with_zero_difference(self, mock_conf_read,  mock_logging):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.start_margin_balance = 2
