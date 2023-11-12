@@ -510,7 +510,7 @@ class BalancerTest(unittest.TestCase):
         self.assertAlmostEqual(51.5463917525773, target_quote, 12)
 
     @patch('balancer.logging')
-    @patch('balancer.get_mayer', return_value={'current':2.35})
+    @patch('balancer.get_mayer', return_value={'current': 2.35})
     def test_calculate_target_quote_mm_bitmex_3(self, mock_mayer, mock_logger):
         balancer.LOG = mock_logger
         balancer.CONF = self.create_default_conf()
@@ -1341,7 +1341,6 @@ class BalancerTest(unittest.TestCase):
 
         mock_logging.info.assert_called_with('Updated start margin, reference and net deposits: %s %s %s (%s)', str(1.95), str(reference_deposits), str(0.95), str(diff))
 
-
     @patch('balancer.logging')
     @patch('configparser.ConfigParser')
     @patch('configparser.ConfigParser.read')
@@ -1457,7 +1456,6 @@ class BalancerTest(unittest.TestCase):
         balancer.CONF.exchange = 'kraken'
 
         self.assertEqual(balancer.compute_amount(10, 30000), 10)
-
 
     @staticmethod
     def create_default_conf():

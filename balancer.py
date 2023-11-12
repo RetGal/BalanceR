@@ -195,9 +195,10 @@ def function_logger(console_level: int, log_file: str = None, file_level: int = 
 def compute_amount(amount: float = None, price: float = None, amount_fiat: float = None):
     if CONF.exchange == 'bitmex':
         return amount_fiat if amount_fiat is not None else amount if \
-            (not amount or amount >= MIN_FIAT_ORDER_SIZE or not price)  else round(price * amount)
+            (not amount or amount >= MIN_FIAT_ORDER_SIZE or not price) else round(price * amount)
     else:
         return amount
+
 
 def fetch_mayer(tries: int = 0):
     try:
