@@ -53,7 +53,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.3.5'
+            self.bot_version = '1.3.6'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -122,19 +122,9 @@ class Order:
             self.price = ccxt_order['info']['price'] if not ccxt_order['info']['price'] else round(ccxt_order['info']['price'])
 
         if 'amount' in ccxt_order:
-            if CONF.exchange == 'bitmex':
-                self.amount = amount_fiat if amount_fiat is not None else ccxt_order['amount'] if (not ccxt_order['amount'] or \
-                              ccxt_order['amount'] >= MIN_FIAT_ORDER_SIZE or not ccxt_order['price']) \
-                              else round(ccxt_order['price'] * ccxt_order['amount'])
-            else:
-                self.amount = ccxt_order['amount']
+            self.amount = compute_amount(ccxt_order['amount'], ccxt_order['price'], amount_fiat)
         elif 'info' in ccxt_order:
-            if CONF.exchange == 'bitmex':
-                self.amount = amount_fiat if amount_fiat is not None else ccxt_order['info']['amount'] if (not ccxt_order['info']['amount'] or \
-                              ccxt_order['info']['amount'] >= MIN_FIAT_ORDER_SIZE or not ccxt_order['info']['price']) \
-                              else round(ccxt_order['info']['price'] * ccxt_order['info']['amount'])
-            else:
-                self.amount = ccxt_order['info']['amount']
+            self.amount = compute_amount(ccxt_order['info']['amount'], ccxt_order['info']['price'], amount_fiat)
 
         if 'side' in ccxt_order:
             self.side = ccxt_order['side']
@@ -201,6 +191,13 @@ def function_logger(console_level: int, log_file: str = None, file_level: int = 
         logger.addHandler(fh)
     return logger
 
+
+def compute_amount(amount: float = None, price: float = None, amount_fiat: float = None):
+    if CONF.exchange == 'bitmex':
+        return amount_fiat if amount_fiat is not None else amount if \
+            (not amount or amount >= MIN_FIAT_ORDER_SIZE or not price)  else round(price * amount)
+    else:
+        return amount
 
 def fetch_mayer(tries: int = 0):
     try:

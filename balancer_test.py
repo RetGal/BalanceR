@@ -1434,6 +1434,31 @@ class BalancerTest(unittest.TestCase):
         self.assertGreater(diff, 1, 'Should have slept for more than 1 second, but did not')
         self.assertLessEqual(diff, 2, 'Should have slept for less than 2 seconds, but did not')
 
+    def test_compute_amount_from_fiat_amount_has_priority(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+
+        self.assertEqual(balancer.compute_amount(0.001, 30000, 400), 400)
+
+    def test_compute_amount_from_amount_and_price(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+
+        self.assertEqual(balancer.compute_amount(0.01, 30000), 300)
+
+    def test_compute_amount_from_amount_if_amount_already_fiat(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+
+        self.assertEqual(balancer.compute_amount(100, 30000), 100)
+
+    def test_compute_amount_from_amount_if_not_bitmex(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'kraken'
+
+        self.assertEqual(balancer.compute_amount(10, 30000), 10)
+
+
     @staticmethod
     def create_default_conf():
         conf = balancer.ExchangeConfig
