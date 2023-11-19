@@ -53,7 +53,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.3.6'
+            self.bot_version = '1.3.7'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -196,8 +196,7 @@ def compute_amount(amount: float = None, price: float = None, amount_fiat: float
     if CONF.exchange == 'bitmex':
         return amount_fiat if amount_fiat is not None else amount if \
             (not amount or amount >= MIN_FIAT_ORDER_SIZE or not price) else round(price * amount)
-    else:
-        return amount
+    return amount
 
 
 def fetch_mayer(tries: int = 0):
@@ -951,19 +950,6 @@ def get_wallet_balance(price: float):
         if CONF.exchange == 'kraken':
             asset = CONF.base if CONF.base != 'BTC' else 'XBt'
             return float(EXCHANGE.private_post_tradebalance({'asset': asset})['result']['tb'])
-        if CONF.exchange == 'liquid':
-            fiat = 0
-            crypto = 0
-            result = EXCHANGE.private_get_accounts_balance()
-            if result:
-                for bal in result:
-                    if bal['currency'] == CONF.base:
-                        crypto = float(bal['balance'])
-                    elif bal['currency'] == CONF.quote:
-                        fiat = float(bal['balance'])
-                if fiat > 0:
-                    return crypto + (fiat / price)
-                return crypto
         if CONF.exchange == 'bitpanda':
             balance = 0
             balances = EXCHANGE.fetch_balance()
@@ -1038,7 +1024,7 @@ def get_closed_order():
     :return: Order
     """
     try:
-        if CONF.exchange in ['kraken', 'liquid']:
+        if CONF.exchange == 'kraken':
             result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=10)
         elif CONF.exchange == 'bitmex':
             result = EXCHANGE.fetch_closed_orders(CONF.symbol, since=None, limit=10, params={'reverse': True})
@@ -1531,33 +1517,16 @@ def get_fiat_balance():
 def get_balance(currency: str):
     try:
         balance_result = {'free': 0, 'used': 0, 'total': 0}
-        if CONF.exchange != 'liquid':
-            bal = EXCHANGE.fetch_balance()
-            if currency in bal and bal[currency]:
-                if 'free' in bal[currency]:
-                    balance_result['free'] = bal[currency]['free'] or 0
-                if 'used' in bal[currency]:
-                    balance_result['used'] = bal[currency]['used'] or 0
-                if 'total' in bal[currency]:
-                    balance_result['total'] = bal[currency]['total'] or 0
-            else:
-                LOG.warning('No %s balance found', currency)
-            return balance_result
-
-        result = EXCHANGE.private_get_trading_accounts()
-        if result:
-            for acc in result:
-                if acc['currency_pair_code'] == CONF.symbol and float(acc['margin']) > 0:
-                    return {'used': float(acc['margin']), 'free': float(acc['free_margin']),
-                            'total': float(acc['equity'])}
-
-        # no position => return wallet balance
-        result = EXCHANGE.private_get_accounts_balance()
-        if result:
-            for bal in result:
-                if bal['currency'] == currency:
-                    return {'used': 0, 'free': float(bal['balance']), 'total': float(bal['balance'])}
-        LOG.warning('Could not get balance for liquid')
+        bal = EXCHANGE.fetch_balance()
+        if currency in bal and bal[currency]:
+            if 'free' in bal[currency]:
+                balance_result['free'] = bal[currency]['free'] or 0
+            if 'used' in bal[currency]:
+                balance_result['used'] = bal[currency]['used'] or 0
+            if 'total' in bal[currency]:
+                balance_result['total'] = bal[currency]['total'] or 0
+        else:
+            LOG.warning('No %s balance found', currency)
         return balance_result
 
     except (ccxt.ExchangeError, ccxt.NetworkError) as error:
