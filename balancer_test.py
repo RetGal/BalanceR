@@ -1454,6 +1454,26 @@ class BalancerTest(unittest.TestCase):
 
         self.assertEqual(balancer.compute_amount(10, 30000), 10)
 
+    def test_compute_amount_from_cctx_amount_has_priority_if_not_bitmex(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'coinbase'
+
+        self.assertEqual(balancer.compute_amount(0.1, None, None, 0.01), 0.1)
+
+    def test_compute_amount_use_from_amount_crypto_has_as_fallback_if_not_bitmex(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'coinbase'
+
+        self.assertEqual(balancer.compute_amount(None, None, None, 0.01), 0.01)
+
+    def test_set_price_from_cctx_price_has_priority(self):
+
+        self.assertEqual(balancer.set_price(38000.1, 39000), 38000)
+
+    def test_set_price_from_price_as_fallback(self):
+
+        self.assertEqual(balancer.set_price(None, 39000.1), 39000)
+
     @staticmethod
     def create_default_conf():
         conf = balancer.ExchangeConfig

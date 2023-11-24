@@ -53,7 +53,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.3.7'
+            self.bot_version = '1.3.8'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -110,21 +110,21 @@ class Order:
     """
     __slots__ = 'id', 'price', 'amount', 'side', 'datetime'
 
-    def __init__(self, ccxt_order, amount_fiat: float = None):
+    def __init__(self, ccxt_order, amount_fiat: float = None, amount_crypto: float = None, price: float = None):
         if 'id' in ccxt_order:
             self.id = ccxt_order['id']
         elif 'uuid' in ccxt_order:
             self.id = ccxt_order['uuid']
 
         if 'price' in ccxt_order:
-            self.price = ccxt_order['price'] if not ccxt_order['price'] else round(ccxt_order['price'])
+            self.price = set_price(ccxt_order['price'], price)
         elif 'info' in ccxt_order:
-            self.price = ccxt_order['info']['price'] if not ccxt_order['info']['price'] else round(ccxt_order['info']['price'])
+            self.price = set_price(ccxt_order['info']['price'], price)
 
         if 'amount' in ccxt_order:
-            self.amount = compute_amount(ccxt_order['amount'], ccxt_order['price'], amount_fiat)
+            self.amount = compute_amount(ccxt_order['amount'], ccxt_order['price'], amount_fiat, amount_crypto)
         elif 'info' in ccxt_order:
-            self.amount = compute_amount(ccxt_order['info']['amount'], ccxt_order['info']['price'], amount_fiat)
+            self.amount = compute_amount(ccxt_order['info']['amount'], ccxt_order['info']['price'], amount_fiat, amount_crypto)
 
         if 'side' in ccxt_order:
             self.side = ccxt_order['side']
@@ -192,11 +192,15 @@ def function_logger(console_level: int, log_file: str = None, file_level: int = 
     return logger
 
 
-def compute_amount(amount: float = None, price: float = None, amount_fiat: float = None):
+def compute_amount(ccxt_amount: float = None, price: float = None, amount_fiat: float = None, amount_crypto: float = None):
     if CONF.exchange == 'bitmex':
-        return amount_fiat if amount_fiat is not None else amount if \
-            (not amount or amount >= MIN_FIAT_ORDER_SIZE or not price) else round(price * amount)
-    return amount
+        return amount_fiat if amount_fiat is not None else ccxt_amount if \
+            (not ccxt_amount or ccxt_amount >= MIN_FIAT_ORDER_SIZE or not price) else round(price * ccxt_amount)
+    return ccxt_amount if ccxt_amount is not None else amount_crypto
+
+
+def set_price(ccxt_price: float = None, price: float = None):
+    return round(ccxt_price) if ccxt_price is not None else round(price) if price is not None else None
 
 
 def fetch_mayer(tries: int = 0):
@@ -885,7 +889,7 @@ def get_margin_leverage():
             if hasattr(result, 'ml'):
                 return float(result['ml'])
             return 0
-        if CONF.exchange == 'bitpanda':
+        if CONF.exchange in ['bitpanda', 'coinbase']:
             return 0  # Margin trading unavailable
         LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_margin_leverage()', CONF.exchange)
         return None
@@ -918,7 +922,7 @@ def get_net_deposits(from_exchange: bool = False):
             for withdrawal_id in ledgers:
                 net_deposits += float(ledgers[withdrawal_id]['amount'])
             return net_deposits
-        if CONF.exchange in ['bitpanda', 'coinbasepro']:
+        if CONF.exchange in ['bitpanda', 'coinbase', 'coinbasepro']:
             net_deposits = 0
             net_withdrawals = 0
             deposits = EXCHANGE.fetch_deposits(CONF.base)
@@ -950,7 +954,7 @@ def get_wallet_balance(price: float):
         if CONF.exchange == 'kraken':
             asset = CONF.base if CONF.base != 'BTC' else 'XBt'
             return float(EXCHANGE.private_post_tradebalance({'asset': asset})['result']['tb'])
-        if CONF.exchange == 'bitpanda':
+        if CONF.exchange in ['bitpanda', 'coinbase']:
             balance = 0
             balances = EXCHANGE.fetch_balance()
             if balances:
@@ -961,7 +965,7 @@ def get_wallet_balance(price: float):
                     if fiat and fiat > 0:
                         balance += fiat / price
                 return balance
-            LOG.warning('get_net_deposit() could not retrieve bitpanda wallet balance')
+            LOG.warning('get_net_deposit() could not retrieve bitpanda/coinbase wallet balance')
             return 0
         LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_wallet_balance()', CONF.exchange)
         return None
@@ -1024,10 +1028,10 @@ def get_closed_order():
     :return: Order
     """
     try:
-        if CONF.exchange == 'kraken':
-            result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=10)
+        if CONF.exchange in ['kraken', 'coinbase']:
+            result = EXCHANGE.fetch_closed_orders(CONF.pair, limit=10)
         elif CONF.exchange == 'bitmex':
-            result = EXCHANGE.fetch_closed_orders(CONF.symbol, since=None, limit=10, params={'reverse': True})
+            result = EXCHANGE.fetch_closed_orders(CONF.symbol, limit=10, params={'reverse': True})
         else:
             result = EXCHANGE.fetch_closed_orders(CONF.pair, since=None, limit=10, params={'reverse': True})
         if result:
@@ -1338,7 +1342,7 @@ def create_sell_order(price: float, amount_crypto: float, amount_fiat: float):
             new_order = EXCHANGE.create_limit_sell_order(CONF.symbol, amount_fiat, price)
         else:
             new_order = EXCHANGE.create_limit_sell_order(CONF.pair, amount_crypto, price)
-        norder = Order(new_order, amount_fiat)
+        norder = Order(new_order, amount_fiat, amount_crypto, price)
         LOG.info('Created %s', str(norder))
         return norder
 
@@ -1381,7 +1385,7 @@ def create_buy_order(price: float, amount_crypto: float, amount_fiat: float):
         else:
             new_order = EXCHANGE.create_limit_buy_order(CONF.pair, amount_crypto, price)
 
-        norder = Order(new_order, amount_fiat)
+        norder = Order(new_order, amount_fiat, amount_crypto, price)
         LOG.info('Created %s', str(norder))
         return norder
 
@@ -1417,7 +1421,7 @@ def create_market_sell_order(amount_crypto: float, amount_fiat: float):
             new_order = EXCHANGE.create_market_sell_order(CONF.symbol, amount_fiat)
         else:
             new_order = EXCHANGE.create_market_sell_order(CONF.pair, amount_crypto)
-        norder = Order(new_order, amount_fiat)
+        norder = Order(new_order, amount_fiat, amount_crypto)
         LOG.info('Created market %s', str(norder))
         return norder
 
@@ -1455,7 +1459,7 @@ def create_market_buy_order(amount_crypto: float, amount_fiat: float = None):
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto, {'oflags': 'fcib'})
         else:
             new_order = EXCHANGE.create_market_buy_order(CONF.pair, amount_crypto)
-        norder = Order(new_order, amount_fiat)
+        norder = Order(new_order, amount_fiat, amount_crypto)
         LOG.info('Created market %s', str(norder))
         return norder
 
