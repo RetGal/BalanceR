@@ -846,7 +846,7 @@ def get_margin_balance():
             # bal['free'] = float(bal['mf'])
             return float(bal['e'])
             # bal['used'] = float(bal['m'])
-        if CONF.exchange in ['bitpanda', 'coinbasepro']:
+        if CONF.exchange in ['bitpanda', 'coinbase', 'coinbasepro']:
             return get_crypto_balance()['total'] + get_fiat_balance()['total'] / get_current_price()
         return get_crypto_balance()['total']
 
