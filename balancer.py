@@ -439,9 +439,9 @@ def create_report_part_settings():
 
 def create_mail_part_general():
     return ["Generated: {:>28}".format(str(datetime.datetime.utcnow().replace(microsecond=0)) + " UTC"),
-           "Bot: {:>30}".format(INSTANCE + '@' + socket.gethostname()),
-           "Version: {:>26}".format(CONF.bot_version),
-           "Running since: {:>20} UTC".format(str(STARTED))]
+            "Bot: {:>30}".format(INSTANCE + '@' + socket.gethostname()),
+            "Version: {:>26}".format(CONF.bot_version),
+            "Running since: {:>20} UTC".format(str(STARTED))]
 
 
 def create_report_part_advice():
@@ -1808,7 +1808,7 @@ if __name__ == '__main__':
     if NO_LOG:
         LOG = function_logger(logging.DEBUG)
     else:
-        LOG_FILENAME = f'{DATA_DIR}log{os.path.sep}{INSTANCE}'
+        LOG_FILENAME = os.path.join(DATA_DIR, 'log', INSTANCE)
         if not os.path.exists('log'):
             os.makedirs('log')
         LOG = function_logger(logging.DEBUG, LOG_FILENAME, logging.INFO)
