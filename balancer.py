@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.4.0'
+            self.bot_version = '1.4.1'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -206,7 +206,7 @@ def set_price(ccxt_price: float = None, price: float = None):
 
 def fetch_mayer(tries: int = 0):
     try:
-        req = requests.get('https://bitcoinition.com/current.json')
+        req = requests.get('https://bitcoinition.com/current.json', timeout=10)
         if req.text:
             mayer = req.json()['data']
             return {'current': float(mayer['current_mayer_multiple']),
@@ -553,11 +553,10 @@ def append_balances(part: dict, margin_balance: float, daily: bool):
     append_actual_quote(part, price)
     append_margin_leverage(part)
     part['labels'].append("Target Position {}".format(CONF.quote))
+    target_position = NA
     if CONF.exchange == 'bitmex':
         target_position = round(calculate_target_position(calculate_target_quote(), price))
         part['mail'].append("Target position {}: {:>{}}".format(CONF.quote, target_position, 17-len(CONF.quote)))
-    else:
-        target_position = 'n/a'
     part['csv'].append("{}".format(target_position))
     append_liquidation_price(part)
 
@@ -598,22 +597,20 @@ def append_margin_change(part: dict, today: dict):
     part['labels'].append("Position {}".format(CONF.quote))
     part['labels'].append("Change %")
     m_bal = "Margin balance {}: {:>{}.4f}".format(CONF.base, today['mBal'], 18-len(CONF.base))
+    change = NA
     if 'mBalChan24' in today:
         change = "{:+.2f}%".format(today['mBalChan24'])
         m_bal += " (" + change + ")*"
         change = "{:+.2f}".format(today['mBalChan24'])
-    else:
-        change = NA
     part['mail'].append(m_bal)
     part['csv'].append("{:.4f};{}".format(today['mBal'], change))
 
     fm_bal = "Position {}: {:>{}}".format(CONF.quote, round(today['fmBal']), 24-len(CONF.quote))
+    change = NA
     if 'fmBalChan24' in today:
         change = "{:+.2f}%".format(today['fmBalChan24'])
         fm_bal += " (" + change + ")*"
         change = "{:+.2f}".format(today['fmBalChan24'])
-    else:
-        change = NA
     part['mail'].append(fm_bal)
     part['csv'].append("{};{}".format(round(today['fmBal']), change))
 
@@ -627,34 +624,31 @@ def append_balance_change(part: dict, today: dict):
     part['labels'].append("Balance {}".format(CONF.quote))
     part['labels'].append("Change %")
     m_bal = "Balance {}: {:>{}.4f}".format(CONF.base, today['mBal'], 25-len(CONF.base))
+    change = NA
     if 'mBalChan24' in today:
         change = "{:+.2f}%".format(today['mBalChan24'])
         m_bal += " (" + change + ")*"
         change = "{:+.2f}".format(today['mBalChan24'])
-    else:
-        change = NA
     part['mail'].append(m_bal)
     part['csv'].append("{:.4f};{}".format(today['mBal'], change))
     fm_bal = "Balance {}: {:>{}}".format(CONF.quote, round(today['fmBal']), 25-len(CONF.quote))
+    change = NA
     if 'fmBalChan24' in today:
         change = "{:+.2f}%".format(today['fmBalChan24'])
         fm_bal += " (" + change + ")*"
         change = "{:+.2f}".format(today['fmBalChan24'])
-    else:
-        change = NA
     part['mail'].append(fm_bal)
     part['csv'].append("{};{}".format(round(today['fmBal']), change))
 
 
 def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
     part['labels'].append("Value Change %")
+    change = NA
     if yesterday and 'mBal' in today and 'fmBal' in today:
         yesterday_total_in_fiat = yesterday['mBal'] * yesterday['price'] + yesterday['fmBal']
         today_total_in_fiat = today['mBal'] * price + today['fmBal']
         change = "{:+.2f}".format(
             (today_total_in_fiat / yesterday_total_in_fiat - 1) * 100) if yesterday_total_in_fiat > 0 else NA
-    else:
-        change = NA
     if change != NA:
         part['mail'].append("Value change: {:>21}%*".format(change))
     else:
@@ -664,11 +658,10 @@ def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
 
 def append_trading_result(part: dict, today: dict, yesterday: dict, price: float):
     part['labels'].append("Trading Result {}".format(CONF.quote))
+    trading_result = NA
     if yesterday and 'mBal' in today and 'fmBal' in today:
         trading_result = (today['mBal'] - yesterday['mBal']) * price + today['fmBal'] - yesterday['fmBal']
         trading_result = "{:+}".format(round(trading_result))
-    else:
-        trading_result = NA
     part['mail'].append("Trading result in {}: {:>{}}*".format(CONF.quote, trading_result, 15-len(CONF.quote)))
     part['csv'].append("{}".format(trading_result))
 
@@ -681,12 +674,11 @@ def append_price_change(part: dict, today: dict, price: float):
     part['labels'].append("Change %")
     padding = 26-len(CONF.base)-len(CONF.quote)
     rate = "{} price {}: {:>{}}".format(CONF.base, CONF.quote, round(price), padding)
+    change = NA
     if 'priceChan24' in today:
         change = "{:+.2f}%".format(today['priceChan24'])
         rate += " (" + change + ")*"
         change = "{:+.2f}".format(today['priceChan24'])
-    else:
-        change = NA
     part['mail'].append(rate)
     part['csv'].append("{};{}".format(round(price), change))
 
@@ -723,12 +715,12 @@ def append_margin_leverage(part: dict):
 def calculate_daily_statistics(m_bal: float, fm_bal: float, price: float, stats: Stats, update_stats: bool):
     """
     Calculates, updates and persists the change in the margin balance compared with yesterday
-    :param m_bal: todays margin balance
-    :param fm_bal: todays fiat margin balance
+    :param m_bal: today's margin balance
+    :param fm_bal: today's fiat margin balance
     :param price: the current rate
     :param stats: the loaded stats
     :param update_stats: update and persists the statistic values
-    :return: todays statistics including price and margin balance changes compared with 24 hours ago
+    :return: today's statistics including price and margin balance changes compared with 24 hours ago
     """
     today = {'mBal': m_bal, 'fmBal': fm_bal, 'price': price}
     if stats is None:
@@ -1882,8 +1874,6 @@ if __name__ == '__main__':
                         ATTEMPT = 1
                 if CONF.backtrade_only_on_profit:
                     LAST_ORDER = ORDER
-                # we need the values after the trade
-                BAL = calculate_balances()
                 do_post_trade_action()
                 ACTION = None
             else:
