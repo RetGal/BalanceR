@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.4.1'
+            self.bot_version = '1.4.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1874,6 +1874,8 @@ if __name__ == '__main__':
                         ATTEMPT = 1
                 if CONF.backtrade_only_on_profit:
                     LAST_ORDER = ORDER
+                # we need the values after the trade
+                BAL = calculate_balances()
                 do_post_trade_action()
                 ACTION = None
             else:
