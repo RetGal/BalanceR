@@ -156,8 +156,7 @@ class Stats:
             self.add_day(day_of_year, data)
 
     def add_day(self, day_of_year: int, data: dict):
-        existing = self.get_day(day_of_year)
-        if existing is None:
+        if self.get_day(day_of_year) is None:
             data['day'] = day_of_year
             if len(self.days) > 2:
                 self.days = sorted(self.days, key=lambda item: item['day'], reverse=True)  # desc
