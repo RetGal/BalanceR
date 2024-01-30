@@ -941,7 +941,7 @@ class BalancerTest(unittest.TestCase):
     @patch('balancer.logging')
     @mock.patch.object(ccxt.kraken, 'cancel_order')
     @mock.patch.object(ccxt.kraken, 'fetch_order_status')
-    def test_cancel_orderd_not_found_already_filled(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
+    def test_cancel_order_not_found_already_filled(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.test = False
         balancer.LOG = mock_logging
@@ -960,7 +960,7 @@ class BalancerTest(unittest.TestCase):
     @patch('balancer.logging')
     @mock.patch.object(ccxt.bitmex, 'cancel_order')
     @mock.patch.object(ccxt.bitmex, 'fetch_order_status')
-    def test_cancel_orderd_not_found_already_filled_bitmex(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
+    def test_cancel_order_not_found_already_filled_bitmex(self, mock_fetch_order_status, mock_cancel_order, mock_logging):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.LOG = mock_logging

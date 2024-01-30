@@ -84,9 +84,7 @@ class ExchangeConfig:
             self.max_leverage_in_percent = abs(float(props['max_leverage_in_percent']))
             self.backtrade_only_on_profit = bool(str(props['backtrade_only_on_profit']).strip('"').lower() == 'true')
             self.report = str(props['report']).strip('"')
-            currency = self.pair.split("/")
-            self.base = currency[0]
-            self.quote = currency[1]
+            self.base, self.quote = self.pair.split("/")
             if self.auto_quote not in self.mm_quotes:
                 raise SystemExit(f"Invalid value for auto_quote: '{self.auto_quote}' possible values are: {self.mm_quotes}")
             if self.report not in self.report_cadences:
@@ -327,7 +325,8 @@ def create_mail_content(daily: bool = False):
     settings_part = create_report_part_settings()
     general_part = create_mail_part_general()
 
-    performance = ["Performance", "-----------", '\n'.join(performance_part['mail']) + '\n* (change since yesterday noon)', '\n\n']
+    performance = ["Performance", "-----------", '\n'.join(performance_part['mail']) +
+                   '\n* (change since yesterday noon)', '\n\n']
     if CONF.exchange == 'bitmex':
         start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
     else:
