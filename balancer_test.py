@@ -176,6 +176,36 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(2000, action['amount'])
         self.assertEqual(30000, action['price'])
 
+    @patch('balancer.get_margin_leverage', return_value=1.2)
+    @patch('balancer.get_position_info', return_value={'currentQty': 4000})
+    def test_meditate_tolerance_not_matched_bitmex(self, mock_get_position_info, mock_get_margin_leverage):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.start_crypto_price = 30000
+        balancer.CONF.tolerance_in_percent = 2.0
+
+        # target_position ≃ 4045 which is below tolerance (4000 + 2% = 4080)
+        action = balancer.meditate_bitmex(44500)
+
+        self.assertIsNone(action)
+
+    @patch('balancer.logging')
+    @patch('balancer.get_margin_leverage', return_value=1.2)
+    @patch('balancer.get_position_info', return_value={'currentQty': 4000})
+    def test_meditate_tolerance_matched_bitmex(self, mock_get_position_info, mock_get_margin_leverage, mock_logger):
+        balancer.LOG = mock_logger
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.start_crypto_price = 30000
+        balancer.CONF.tolerance_in_percent = 0.5
+
+        # target_position ≃ 4045 which is above tolerance (4000 + 1% = 4040)
+        action = balancer.meditate_bitmex(44500)
+
+        self.assertEqual('BUY', action['direction'])
+        self.assertEqual(45, action['amount'])
+        self.assertEqual(44500, action['price'])
+
     @patch('balancer.logging')
     @patch('balancer.get_margin_leverage', return_value=1.6)
     @patch('balancer.get_position_info', return_value={'currentQty': 5000})
