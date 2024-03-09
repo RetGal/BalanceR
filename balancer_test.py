@@ -140,6 +140,42 @@ class BalancerTest(unittest.TestCase):
 
         self.assertFalse(balancer.is_nonprofit_trade(last_order, action))
 
+    def test_is_price_difference_smaller_than_tolerance_opposite_direction_should_return_true(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = False
+        last_order = balancer.Order({'side': 'sell', 'id': '1', 'price': 62000, 'amount': 100,
+                                     'datetime': datetime.datetime.today().isoformat()})
+        action = {'direction': 'BUY', 'price': 61000}
+
+        self.assertTrue(balancer.is_price_difference_smaller_than_tolerance(last_order, action))
+
+    def test_is_price_difference_smaller_than_tolerance_same_direction_should_return_true(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = False
+        last_order = balancer.Order({'side': 'sell', 'id': '1', 'price': 61000, 'amount': 100,
+                                     'datetime': datetime.datetime.today().isoformat()})
+        action = {'direction': 'SELL', 'price': 62000}
+
+        self.assertTrue(balancer.is_price_difference_smaller_than_tolerance(last_order, action))
+
+    def test_is_price_difference_smaller_than_tolerance_opposite_direction_should_return_false(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = False
+        last_order = balancer.Order({'side': 'sell', 'id': '1', 'price': 63000, 'amount': 100,
+                                     'datetime': datetime.datetime.today().isoformat()})
+        action = {'direction': 'BUY', 'price': 61000}
+
+        self.assertFalse(balancer.is_price_difference_smaller_than_tolerance(last_order, action))
+
+    def test_is_price_difference_smaller_than_tolerance_same_direction_should_return_false(self):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.backtrade_only_on_profit = False
+        last_order = balancer.Order({'side': 'sell', 'id': '1', 'price': 61000, 'amount': 100,
+                                     'datetime': datetime.datetime.today().isoformat()})
+        action = {'direction': 'SELL', 'price': 63000}
+
+        self.assertFalse(balancer.is_price_difference_smaller_than_tolerance(last_order, action))
+
     @patch('balancer.get_open_orders')
     def test_cancel_all_open_orders(self, mock_get_open_orders):
         balancer.cancel_all_open_orders()
@@ -163,9 +199,11 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(15, action['percentage'])
         self.assertEqual(10000, action['price'])
 
+    @patch('balancer.logging')
     @patch('balancer.get_margin_leverage', return_value=1.2)
     @patch('balancer.get_position_info', return_value={'currentQty': 4000})
-    def test_meditate_quote_too_low_bitmex(self, mock_get_position_info, mock_get_margin_leverage):
+    def test_meditate_quote_too_low_bitmex(self, mock_get_position_info, mock_get_margin_leverage, mock_logger):
+        balancer.LOG = mock_logger
         balancer.CONF = self.create_default_conf()
         balancer.CONF.exchange = 'bitmex'
         balancer.CONF.start_crypto_price = 30000

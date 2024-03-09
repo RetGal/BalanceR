@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.4.2'
+            self.bot_version = '1.4.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1715,6 +1715,12 @@ def is_nonprofit_trade(last_order: Order, action: dict):
     return last_order and last_order.side.upper() != action['direction'] and last_order.price > action['price']
 
 
+def is_price_difference_smaller_than_tolerance(last_order: Order, action: dict):
+    if action['direction'] == 'BUY':
+        return last_order and last_order.price * (1 - CONF.tolerance_in_percent / 100) < action['price']
+    return last_order and last_order.price * (1 + CONF.tolerance_in_percent / 100) > action['price']
+
+
 def last_price(direction: str):
     if not CONF.backtrade_only_on_profit:
         return None
@@ -1856,7 +1862,10 @@ if __name__ == '__main__':
         ATTEMPT: int = 1 if not INIT else CONF.trade_trials + 1
         while ACTION:
             if is_nonprofit_trade(LAST_ORDER, ACTION):
-                LOG.info('Not %sing @ %s', ACTION['direction'].lower(), ACTION['price'])
+                LOG.info('Not %sing @ %s (nonprofit)', ACTION['direction'].lower(), ACTION['price'])
+                break
+            if is_price_difference_smaller_than_tolerance(LAST_ORDER, ACTION):
+                LOG.info('Not %sing @ %s (tolerance)', ACTION['direction'].lower(), ACTION['price'])
                 break
             if ACTION['direction'] == 'BUY':
                 ORDER = do_buy(ACTION['percentage'], ACTION['amount'], ACTION['price'], ATTEMPT)
