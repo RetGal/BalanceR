@@ -1173,6 +1173,7 @@ class BalancerTest(unittest.TestCase):
         self.assertTrue(csv_part.rfind('n/a') > 0)
 
     def test_append_net_change_positive_fiat(self):
+        balancer.CONF = self.create_default_conf()
         part = {'mail': [], 'csv': [], 'labels': []}
         today = {'mBal': 1, 'fmBal': 10100}
         yesterday = {'mBal': 1, 'fmBal': 10000, 'price': 10000}
@@ -1183,6 +1184,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('Value Change %', part['labels'][0])
 
     def test_append_net_change_positive_crypto(self):
+        balancer.CONF = self.create_default_conf()
         part = {'mail': [], 'csv': [], 'labels': []}
         today = {'mBal': 1.01, 'fmBal': 10000}
         yesterday = {'mBal': 1, 'fmBal': 10000, 'price': 10000}
@@ -1193,6 +1195,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('Value Change %', part['labels'][0])
 
     def test_append_net_change_positive_crypto_by_price(self):
+        balancer.CONF = self.create_default_conf()
         part = {'mail': [], 'csv': [], 'labels': []}
         today = {'mBal': 1, 'fmBal': 4000}
         yesterday = {'mBal': 1, 'fmBal': 4000, 'price': 10000}
@@ -1202,7 +1205,38 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('+0.50', part['csv'][0])
         self.assertEqual('Value Change %', part['labels'][0])
 
+    @patch('balancer.get_margin_leverage')
+    def test_append_net_change_positive_bitmex(self, mock_get_margin_leverage):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.quote = 'USD'
+        mock_get_margin_leverage.return_value = 0.02
+        part = {'mail': [], 'csv': [], 'labels': []}
+        today = {'mBalChan24': 0.17, 'priceChan24': 3.61}
+        yesterday = {}
+
+        balancer.append_value_change(part, today, yesterday, 0)
+
+        self.assertEqual('+0.0978', part['csv'][0])
+        self.assertEqual('Value Change %', part['labels'][0])
+
+    @patch('balancer.get_margin_leverage')
+    def test_append_net_change_negative_bitmex(self, mock_get_margin_leverage):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.exchange = 'bitmex'
+        balancer.CONF.quote = 'USD'
+        mock_get_margin_leverage.return_value = 0.02
+        part = {'mail': [], 'csv': [], 'labels': []}
+        today = {'mBalChan24': -0.02, 'priceChan24': -0.2}
+        yesterday = {}
+
+        balancer.append_value_change(part, today, yesterday, 0)
+
+        self.assertEqual('-0.0160', part['csv'][0])
+        self.assertEqual('Value Change %', part['labels'][0])
+
     def test_append_net_change_negative_fiat(self):
+        balancer.CONF = self.create_default_conf()
         part = {'mail': [], 'csv': [], 'labels': []}
         today = {'mBal': 1, 'fmBal': 10000}
         yesterday = {'mBal': 1, 'fmBal': 10100, 'price': 10000}
@@ -1213,6 +1247,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('Value Change %', part['labels'][0])
 
     def test_append_net_change_negative_crypto(self):
+        balancer.CONF = self.create_default_conf()
         part = {'mail': [], 'csv': [], 'labels': []}
         today = {'mBal': 1, 'fmBal': 10000}
         yesterday = {'mBal': 1.01, 'fmBal': 10000, 'price': 10000}
@@ -1223,6 +1258,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual('Value Change %', part['labels'][0])
 
     def test_append_net_change_negative_crypto_by_price(self):
+        balancer.CONF = self.create_default_conf()
         part = {'mail': [], 'csv': [], 'labels': []}
         today = {'mBal': 1, 'fmBal': 10000}
         yesterday = {'mBal': 1, 'fmBal': 10000, 'price': 10100}

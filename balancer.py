@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.4.3'
+            self.bot_version = '1.4.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -315,7 +315,7 @@ def create_mail_content(daily: bool = False):
     """
     if not daily:
         order = ORDER if ORDER else get_closed_order()
-        trade = ["Last trade", "----------", '\n'.join(create_report_part_trade(order)), '\n\n']
+        trade = ["Trade", "----------", '\n'.join(create_report_part_trade(order)), '\n\n']
         text = '\n'.join(trade)
     else:
         text = ''
@@ -461,7 +461,7 @@ def create_report_part_performance(daily: bool):
 
 
 def create_report_part_trade(last_order: Order):
-    return ["Executed: {:>17}".format(str(last_order))]
+    return ["{:>17}".format(str(last_order))]
 
 
 def send_mail(subject: str, text: str, attachment: str = None):
@@ -537,6 +537,7 @@ def append_balances(part: dict, margin_balance: float, daily: bool):
         margin_balance_of_fiat = get_margin_balance_of_fiat()
         today = calculate_daily_statistics(margin_balance, margin_balance_of_fiat['total'], price, stats, daily)
         append_margin_change(part, today)
+        append_position_change(part, today)
     else:
         c_bal = get_crypto_balance()
         crypto_total = c_bal['total'] if c_bal else 0
@@ -588,7 +589,7 @@ def append_liquidation_price(part: dict):
 
 def append_margin_change(part: dict, today: dict):
     """
-    Appends crypto margin and fiat position and their change (bitmex only)
+    Appends crypto margin and its change (bitmex only)
     """
     part['labels'].append("Margin {}".format(CONF.base))
     part['labels'].append("Change %")
@@ -603,6 +604,10 @@ def append_margin_change(part: dict, today: dict):
     part['mail'].append(m_bal)
     part['csv'].append("{:.4f};{}".format(today['mBal'], change))
 
+def append_position_change(part: dict, today: dict):
+    """
+    Appends fiat position and its change (bitmex only)
+    """
     fm_bal = "Position {}: {:>{}}".format(CONF.quote, round(today['fmBal']), 24-len(CONF.quote))
     change = NA
     if 'fmBalChan24' in today:
@@ -642,13 +647,24 @@ def append_balance_change(part: dict, today: dict):
 def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
     part['labels'].append("Value Change %")
     change = NA
-    if yesterday and 'mBal' in today and 'fmBal' in today:
+    if CONF.exchange == 'bitmex':
+        if 'mBalChan24' in today and 'priceChan24' in today:
+            margin_change = today['mBalChan24']
+            price_change = today['priceChan24']
+            margin_leverage = get_margin_leverage()
+            if margin_leverage:
+                margin_leverage = round(margin_leverage * 100)
+                change = "{:+.4f}".format(margin_change - price_change * margin_leverage / 100)
+    elif yesterday and 'mBal' in today and 'fmBal' in today:
         yesterday_total_in_fiat = yesterday['mBal'] * yesterday['price'] + yesterday['fmBal']
         today_total_in_fiat = today['mBal'] * price + today['fmBal']
         change = "{:+.2f}".format(
             (today_total_in_fiat / yesterday_total_in_fiat - 1) * 100) if yesterday_total_in_fiat > 0 else NA
     if change != NA:
-        part['mail'].append("Value change: {:>21}%*".format(change))
+        if CONF.exchange == 'bitmex':
+            part['mail'].append("Value change: {:>19}%*".format(change))
+        else:
+            part['mail'].append("Value change: {:>21}%*".format(change))
     else:
         part['mail'].append("Value change: {:>21}*".format(change))
     part['csv'].append("{}".format(change))
