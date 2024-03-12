@@ -661,10 +661,7 @@ def append_value_change(part: dict, today: dict, yesterday: dict, price: float):
         change = "{:+.2f}".format(
             (today_total_in_fiat / yesterday_total_in_fiat - 1) * 100) if yesterday_total_in_fiat > 0 else NA
     if change != NA:
-        if CONF.exchange == 'bitmex':
-            part['mail'].append("Value change: {:>19}%*".format(change))
-        else:
-            part['mail'].append("Value change: {:>21}%*".format(change))
+        part['mail'].append("Value change: {:>21}%*".format(change))
     else:
         part['mail'].append("Value change: {:>21}*".format(change))
     part['csv'].append("{}".format(change))
