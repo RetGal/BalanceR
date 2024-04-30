@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.4.4'
+            self.bot_version = '1.4.5'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -315,12 +315,12 @@ def create_mail_content(daily: bool = False):
     """
     if not daily:
         order = ORDER if ORDER else get_closed_order()
-        trade = ["Trade", "----------", '\n'.join(create_report_part_trade(order)), '\n\n']
+        trade = ["Trade", "-----", '\n'.join(create_report_part_trade(order)), '\n\n']
         text = '\n'.join(trade)
     else:
         text = ''
     performance_part = create_report_part_performance(daily)
-    start_values_part = create_report_part_start_values()
+    base_values_part = create_report_part_base_values()
     advice_part = create_report_part_advice()
     settings_part = create_report_part_settings()
     general_part = create_mail_part_general()
@@ -328,7 +328,7 @@ def create_mail_content(daily: bool = False):
     performance = ["Performance", "-----------", '\n'.join(performance_part['mail']) +
                    '\n* (change since yesterday noon)', '\n\n']
     if CONF.exchange == 'bitmex':
-        start = ["Start information", "-----------------", '\n'.join(start_values_part['mail']), '\n\n']
+        start = ["Base information", "----------------", '\n'.join(base_values_part['mail']), '\n\n']
     else:
         start = []
     advice = ["Assessment / advice", "-------------------", '\n'.join(advice_part['mail']), '\n\n']
@@ -345,29 +345,29 @@ def create_mail_content(daily: bool = False):
     csv = None if not daily else "{};{} UTC;{};{};{};{};{}\n".format(INSTANCE,
                                                                      datetime.datetime.utcnow().replace(microsecond=0),
                                                                      ';'.join(performance_part['csv']),
-                                                                     ';'.join(start_values_part['csv']),
+                                                                     ';'.join(base_values_part['csv']),
                                                                      ';'.join(advice_part['csv']),
                                                                      ';'.join(settings_part['csv']),
                                                                      CONF.info)
 
     labels = None if not daily else "Bot;Datetime;{};{};{};{};\n".format(';'.join(performance_part['labels']),
-                                                                         ';'.join(start_values_part['labels']),
+                                                                         ';'.join(base_values_part['labels']),
                                                                          ';'.join(advice_part['labels']),
                                                                          ';'.join(settings_part['labels']))
 
     return {'text': text, 'csv': csv, 'labels': labels}
 
 
-def create_report_part_start_values():
+def create_report_part_base_values():
     part = {'mail': [], 'csv': [], 'labels': []}
-    part['labels'].append("Start Price")
-    part['labels'].append("Start Margin")
-    part['labels'].append("Start MM")
+    part['labels'].append("Price")
+    part['labels'].append("Margin")
+    part['labels'].append("MM")
     part['labels'].append("Start Date")
     if CONF.exchange == 'bitmex':
-        part['mail'].append("Start price {}: {:>18}".format(CONF.quote, CONF.start_crypto_price))
-        part['mail'].append("Start margin balance {}: {:>9}".format(CONF.base, round(CONF.start_margin_balance, 4)))
-        part['mail'].append("Start MM: {:>25}".format(round(CONF.start_mayer_multiple, 4)))
+        part['mail'].append("Price {}: {:>18}".format(CONF.quote, CONF.start_crypto_price))
+        part['mail'].append("Margin balance {}: {:>9}".format(CONF.base, round(CONF.start_margin_balance, 4)))
+        part['mail'].append("MM: {:>25}".format(round(CONF.start_mayer_multiple, 4)))
         part['mail'].append("Start date: {:>27}".format(CONF.start_date))
         part['csv'].append("{}".format(CONF.start_crypto_price))
         part['csv'].append("{}".format(CONF.start_margin_balance))
