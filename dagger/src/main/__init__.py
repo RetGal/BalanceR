@@ -3,22 +3,16 @@
 This module has been generated via dagger init and serves as a reference to
 basic module structure as you get started with Dagger.
 """
-from typing import Self
+from typing import Annotated
 
 import dagger
-from dagger import dag, function, object_type
+from dagger import Doc, dag, function, object_type
 
 
 @object_type
 class BalanceR:
 
-    python_version: str = "3"
-
-    @function
-    def with_python(self, version: str | None) -> Self:
-        if version:
-            self.python_version = version
-        return self
+    python: Annotated[str, Doc("Python version to use")] = "3"
 
     @function
     def chuck_norris(self, source: dagger.Directory):
@@ -52,7 +46,7 @@ class BalanceR:
         """Build a ready-to-use development environment"""
         return (
             dag.container()
-            .from_("python:"+self.python_version+"-alpine")
+            .from_(f"python:{self.python}-alpine")
             .with_directory("/src", source)
             .with_workdir("/src")
             .with_exec(["pip", "install", "--upgrade", "pip"])
