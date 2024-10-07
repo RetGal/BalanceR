@@ -12,4 +12,4 @@ VOLUME /opt/data
 COPY balancer.py requirements.txt ./
 RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
 
-CMD python ./balancer.py ${BALANCER_CONFIG} -nolog
+CMD ["python", "./balancer.py", "${BALANCER_CONFIG}", "-nolog"]
