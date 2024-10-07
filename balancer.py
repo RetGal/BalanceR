@@ -121,7 +121,7 @@ class Order:
             self.price = set_price(ccxt_order['info']['price'], price)
 
         if 'amount' in ccxt_order:
-            self.amount = compute_amount(ccxt_order['amount'], ccxt_order['price'], amount_fiat, amount_crypto)
+            self.amount = compute_amount(ccxt_order['amount'], ccxt_order['price'] if 'price' in ccxt_order else None, amount_fiat, amount_crypto)
         elif 'info' in ccxt_order:
             self.amount = compute_amount(ccxt_order['info']['amount'], ccxt_order['info']['price'], amount_fiat, amount_crypto)
 
