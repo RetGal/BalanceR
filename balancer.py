@@ -365,9 +365,9 @@ def create_report_part_base_values():
     part['labels'].append("MM")
     part['labels'].append("Start Date")
     if CONF.exchange == 'bitmex':
-        part['mail'].append("Price {}: {:>18}".format(CONF.quote, CONF.start_crypto_price))
-        part['mail'].append("Margin balance {}: {:>9}".format(CONF.base, round(CONF.start_margin_balance, 4)))
-        part['mail'].append("MM: {:>25}".format(round(CONF.start_mayer_multiple, 4)))
+        part['mail'].append("Price {}: {:>24}".format(CONF.quote, CONF.start_crypto_price))
+        part['mail'].append("Margin balance {}: {:>15}".format(CONF.base, round(CONF.start_margin_balance, 4)))
+        part['mail'].append("MM: {:>31}".format(round(CONF.start_mayer_multiple, 4)))
         part['mail'].append("Start date: {:>27}".format(CONF.start_date))
         part['csv'].append("{}".format(CONF.start_crypto_price))
         part['csv'].append("{}".format(CONF.start_margin_balance))
