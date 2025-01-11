@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.4.6'
+            self.bot_version = '1.4.7'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1483,9 +1483,11 @@ def get_used_balance():
     try:
         if CONF.exchange == 'bitmex':
             position = EXCHANGE.private_get_position()
-            if not position:
-                return None
-            return float(position[0]['currentQty'])
+            if position:
+                for po in position:
+                    if po['symbol'] == CONF.symbol:
+                        return float(po['currentQty'])
+            return None
         if CONF.exchange == 'kraken':
             result = EXCHANGE.private_post_tradebalance()['result']
             return float(result['e']) - float(result['mf'])
@@ -1541,7 +1543,9 @@ def get_position_info():
         if CONF.exchange == 'bitmex':
             position = EXCHANGE.private_get_position()
             if position:
-                return position[0]
+                for po in position:
+                    if po['symbol'] == CONF.symbol:
+                        return po
             return None
         LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_postion_info()', CONF.exchange)
         return None
