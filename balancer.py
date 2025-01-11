@@ -860,7 +860,7 @@ def get_margin_balance_of_fiat():
     try:
         if CONF.exchange == 'bitmex':
             pos = get_position_info()
-            if not pos or not 'markPrice' in pos or not pos['markPrice']:
+            if not pos or 'markPrice' not in pos or not pos['markPrice']:
                 return {'total': 0}
             return {'total': float(pos['homeNotional']) * float(pos['markPrice'])}
         LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_margin_balance_of_fiat()', CONF.exchange)
