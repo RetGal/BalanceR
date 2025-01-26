@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.4.7'
+            self.bot_version = '1.4.8'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -879,7 +879,11 @@ def get_margin_leverage():
     """
     try:
         if CONF.exchange == 'bitmex':
-            return float(EXCHANGE.fetch_balance()['info'][0]['marginLeverage'])
+            asset = CONF.base if CONF.base != 'BTC' else 'XBt'
+            balances = EXCHANGE.fetch_balance()['info']
+            for bal in balances:
+                if bal['currency'] == asset:
+                    return float(bal['marginLeverage'])
         if CONF.exchange == 'kraken':
             result = EXCHANGE.private_post_tradebalance()['result']
             if hasattr(result, 'ml'):
@@ -946,7 +950,11 @@ def get_wallet_balance(price: float):
     """
     try:
         if CONF.exchange == 'bitmex':
-            return float(EXCHANGE.fetch_balance()['info'][0]['walletBalance']) * CONF.satoshi_factor
+            asset = CONF.base if CONF.base != 'BTC' else 'XBt'
+            balances = EXCHANGE.fetch_balance()['info']
+            for bal in balances:
+                if bal['currency'] == asset:
+                    return float(bal['walletBalance']) * CONF.satoshi_factor
         if CONF.exchange == 'kraken':
             asset = CONF.base if CONF.base != 'BTC' else 'XBt'
             return float(EXCHANGE.private_post_tradebalance({'asset': asset})['result']['tb'])
@@ -979,7 +987,11 @@ def get_balances():
     """
     try:
         if CONF.exchange == 'bitmex':
-            return EXCHANGE.fetch_balance()['info'][0]
+            asset = CONF.base if CONF.base != 'BTC' else 'XBt'
+            balances = EXCHANGE.fetch_balance()['info']
+            for bal in balances:
+                if bal['currency'] == asset:
+                    return bal
         LOG.warning(NOT_IMPLEMENTED_MESSAGE, 'get_balances()', CONF.exchange)
         return None
 
