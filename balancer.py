@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.4.8'
+            self.bot_version = '1.4.9'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -230,6 +230,8 @@ def evaluate_mayer(mayer: dict = None):
 
 def append_mayer(part: dict):
     mayer = fetch_mayer()
+    if mayer:
+        mayer['current'] = mayer['current'] if mayer['current'] > 0 else get_mayer()['current']
     advice = evaluate_mayer(mayer)
     part['labels'].append("MM")
     if mayer is None:
