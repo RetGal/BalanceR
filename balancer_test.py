@@ -927,7 +927,7 @@ class BalancerTest(unittest.TestCase):
         balancer.CONF.test = False
         balancer.LOG = mock_logging
         balancer.EXCHANGE = balancer.connect_to_exchange()
-        mock_fetch_balance.return_value = {'BTC': {'used': None, 'free': None, 'total': 0.9}}
+        mock_fetch_balance.return_value = {'XBT.F': {'used': None, 'free': None, 'total': 0.9}}
 
         balance = balancer.get_crypto_balance()
 
