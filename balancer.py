@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.4.9'
+            self.bot_version = '1.5.0'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1532,6 +1532,10 @@ def get_fiat_balance():
 
 def get_balance(currency: str):
     try:
+        if CONF.exchange == 'kraken':
+            if currency == 'BTC':
+                currency = 'XBT'
+            currency += '.F'
         balance_result = {'free': 0, 'used': 0, 'total': 0}
         bal = EXCHANGE.fetch_balance()
         if currency in bal and bal[currency]:
