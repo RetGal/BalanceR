@@ -927,7 +927,22 @@ class BalancerTest(unittest.TestCase):
         balancer.CONF.test = False
         balancer.LOG = mock_logging
         balancer.EXCHANGE = balancer.connect_to_exchange()
-        mock_fetch_balance.return_value = {'XBT.F': {'used': None, 'free': None, 'total': 0.9}}
+        mock_fetch_balance.return_value = {'BTC': {'used': None, 'free': None, 'total': 0.9}, 'XBT.F': {'total': 0}}
+
+        balance = balancer.get_crypto_balance()
+
+        self.assertEqual(0, balance['used'])
+        self.assertEqual(0, balance['free'])
+        self.assertEqual(0.9, balance['total'])
+
+    @patch('balancer.logging')
+    @mock.patch.object(ccxt.kraken, 'fetch_balance')
+    def test_get_balance_alternative_currency(self, mock_fetch_balance, mock_logging):
+        balancer.CONF = self.create_default_conf()
+        balancer.CONF.test = False
+        balancer.LOG = mock_logging
+        balancer.EXCHANGE = balancer.connect_to_exchange()
+        mock_fetch_balance.return_value = {'BTC': {'total': 0}, 'XBT.F': {'used': None, 'free': None, 'total': 0.9}}
 
         balance = balancer.get_crypto_balance()
 
