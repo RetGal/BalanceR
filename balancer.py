@@ -958,7 +958,6 @@ def get_wallet_balance(price: float):
                 if bal['currency'] == asset:
                     return float(bal['walletBalance']) * CONF.satoshi_factor
         if CONF.exchange == 'kraken':
-            # asset = CONF.base if CONF.base != 'BTC' else 'XBt'
             return float(EXCHANGE.private_post_tradebalance({'asset': CONF.base})['result']['tb'])
         if CONF.exchange in ['bitpanda', 'coinbase']:
             balance = 0
