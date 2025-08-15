@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.5.1'
+            self.bot_version = '1.5.2'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -958,8 +958,8 @@ def get_wallet_balance(price: float):
                 if bal['currency'] == asset:
                     return float(bal['walletBalance']) * CONF.satoshi_factor
         if CONF.exchange == 'kraken':
-            asset = CONF.base if CONF.base != 'BTC' else 'XBt'
-            return float(EXCHANGE.private_post_tradebalance({'asset': asset})['result']['tb'])
+            # asset = CONF.base if CONF.base != 'BTC' else 'XBt'
+            return float(EXCHANGE.private_post_tradebalance({'asset': CONF.base})['result']['tb'])
         if CONF.exchange in ['bitpanda', 'coinbase']:
             balance = 0
             balances = EXCHANGE.fetch_balance()
