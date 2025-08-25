@@ -35,7 +35,7 @@ SIMULATE = False
 DATA_DIR = ''
 STARTED = datetime.datetime.utcnow().replace(microsecond=0)
 STOP_ERRORS = ['order_size', 'smaller', 'MIN_NOTIONAL', 'nsufficient', 'too low', 'too small', 'not_enough', 'below',
-               'exceeds account', 'price', 'nvalid arg', 'nvalid orderQty']
+               'exceeds account', 'price', 'nvalid arg', 'nvalid orderQty', 'Service Unavailable', 'ExchangeNotAvailable']
 ACCOUNT_ERRORS = ['account has been disabled', 'key is disabled', 'authentication failed', 'permission denied',
                   'invalid api key', 'access denied']
 RETRY_MESSAGE = 'Got an error %s %s, retrying in about 5 seconds...'
@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.5.2'
+            self.bot_version = '1.5.3'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
