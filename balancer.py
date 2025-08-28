@@ -54,7 +54,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.5.3'
+            self.bot_version = '1.5.4'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1031,20 +1031,22 @@ def get_open_orders():
         return get_open_orders()
 
 
-def get_closed_order():
+def get_closed_order(orderLimit: int = 10, attempt: int = 0):
     """
     Gets the last closed order
     :return: Order
     """
     try:
         if CONF.exchange in ['kraken', 'coinbase']:
-            result = EXCHANGE.fetch_closed_orders(CONF.pair, limit=10)
+            result = EXCHANGE.fetch_closed_orders(CONF.pair, limit=orderLimit)
         elif CONF.exchange == 'bitmex':
-            result = EXCHANGE.fetch_closed_orders(CONF.symbol, limit=10, params={'reverse': True})
+            result = EXCHANGE.fetch_closed_orders(CONF.symbol, limit=orderLimit, params={'reverse': True})
         else:
-            result = EXCHANGE.fetch_closed_orders(CONF.pair, limit=10, params={'reverse': True})
+            result = EXCHANGE.fetch_closed_orders(CONF.pair, limit=orderLimit, params={'reverse': True})
         if result:
             closed = [r for r in result if r['status'] != 'canceled']
+            if not closed:
+                return get_closed_order(orderLimit+10, attempt+1) if attempt < 6 else None
             orders = sorted(closed, key=lambda order: order['datetime'])
             last_order = Order(orders[-1])
             LOG.info('Last %s', str(last_order))
