@@ -297,7 +297,7 @@ class BalancerTest(unittest.TestCase):
         self.assertEqual(10000, action['price'])
 
     @patch('balancer.read_daily_average', return_value=None)
-    @patch('balancer.fetch_mayer', return_value={'current': 0.5})
+    @patch('balancer.get_mayer', return_value={'current': 0.5})
     def test_meditate_quote_too_low_auto_quote_enabled_low_mayer_from_remote_high_max_crypto_quote(self, mock_mayer, read_mayer):
         balancer.CONF = self.create_default_conf()
         balancer.CONF.max_crypto_quote_in_percent = 100
@@ -311,7 +311,7 @@ class BalancerTest(unittest.TestCase):
 
     @patch('balancer.logging')
     @patch('balancer.read_daily_average', return_value=None)
-    @patch('balancer.fetch_mayer', return_value={'current': 0.5})
+    @patch('balancer.get_mayer', return_value={'current': 0.5})
     def test_meditate_quote_too_low_auto_quote_enabled_low_mayer_from_remote_limited_by_default_max_crypto_quote(self, mock_mayer, read_mayer, mock_logger):
         balancer.LOG = mock_logger
         balancer.CONF = self.create_default_conf()
@@ -326,7 +326,7 @@ class BalancerTest(unittest.TestCase):
 
     @patch('balancer.logging')
     @patch('balancer.read_daily_average', return_value=None)
-    @patch('balancer.fetch_mayer', return_value={'current': 0.5})
+    @patch('balancer.get_mayer', return_value={'current': 0.5})
     def test_meditate_quote_too_low_auto_quote_enabled_low_mayer_from_remote_low_max_crypto_quote(self, mock_mayer, read_mayer, mock_logger):
         balancer.LOG = mock_logger
         balancer.CONF = self.create_default_conf()
@@ -1148,17 +1148,17 @@ class BalancerTest(unittest.TestCase):
         mock_kraken.create_limit_buy_order.assert_called_with(balancer.CONF.pair, amount_crypto, buy_price, {'oflags': 'fcib'})
 
     def test_evaluate_mayer_buy(self):
-        advice = balancer.evaluate_mayer({'current': 1, 'average': 1.5})
+        advice = balancer.evaluate_mayer({'current': 1})
 
         self.assertEqual('BUY', advice)
 
     def test_evaluate_mayer_sell(self):
-        advice = balancer.evaluate_mayer({'current': 2.5, 'average': 1.5})
+        advice = balancer.evaluate_mayer({'current': 2.5})
 
         self.assertEqual('SELL', advice)
 
     def test_evaluate_mayer_hold(self):
-        advice = balancer.evaluate_mayer({'current': 2.2, 'average': 1.5})
+        advice = balancer.evaluate_mayer({'current': 2.2})
 
         self.assertEqual('HOLD', advice)
 

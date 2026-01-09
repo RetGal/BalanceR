@@ -19,7 +19,6 @@ from logging.handlers import RotatingFileHandler
 from time import sleep
 
 import ccxt
-import requests
 
 MIN_ORDER_SIZE = 0.001
 MIN_FIAT_ORDER_SIZE = 100
@@ -54,7 +53,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.5.4'
+            self.bot_version = '1.5.5'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -201,27 +200,10 @@ def set_price(ccxt_price: float = None, price: float = None):
     return round(ccxt_price) if ccxt_price is not None else round(price) if price is not None else None
 
 
-def fetch_mayer(tries: int = 0):
-    try:
-        req = requests.get('https://bitcoinition.com/current.json', timeout=10)
-        if req.text:
-            mayer = req.json()['data']
-            return {'current': float(mayer['current_mayer_multiple']),
-                    'average': float(mayer['average_mayer_multiple'])}
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout, requests.exceptions.ReadTimeout,
-            ValueError) as error:
-        LOG.error(RETRY_MESSAGE, type(error).__name__, str(error.args))
-    if tries < 4:
-        sleep_for(4, 6)
-        return fetch_mayer(tries + 1)
-    LOG.warning('Failed to fetch Mayer multiple, giving up after 4 attempts')
-    return None
-
-
 def evaluate_mayer(mayer: dict = None):
     if mayer is None:
         return 'n/a'
-    if mayer['current'] < mayer['average']:
+    if mayer['current'] < 1.3:
         return 'BUY'
     if mayer['current'] > 2.4:
         return 'SELL'
@@ -229,9 +211,7 @@ def evaluate_mayer(mayer: dict = None):
 
 
 def append_mayer(part: dict):
-    mayer = fetch_mayer()
-    if mayer:
-        mayer['current'] = mayer['current'] if mayer['current'] > 0 else get_mayer()['current']
+    mayer = get_mayer()
     advice = evaluate_mayer(mayer)
     part['labels'].append("MM")
     if mayer is None:
@@ -242,7 +222,7 @@ def append_mayer(part: dict):
         part['mail'].append("Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], 2.4, advice))
     elif advice == 'BUY':
         part['mail'].append(
-            "Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], mayer['average'], advice))
+            "Mayer multiple: {:>19.2f} (< {:.2f} = {})".format(mayer['current'], 1.3, advice))
     else:
         part['mail'].append("Mayer multiple: {:>19.2f} (> {:.2f} = {})".format(mayer['current'], 2.4, advice))
     part['csv'].append("{:.2f}".format(mayer['current']))
@@ -250,10 +230,7 @@ def append_mayer(part: dict):
 
 def get_mayer():
     btc_usd = get_btc_usd_pair()
-    mayer = calculate_mayer(get_current_price(btc_usd, 0, 3))
-    if mayer is None:
-        mayer = fetch_mayer()
-    return mayer
+    return calculate_mayer(get_current_price(btc_usd, 0, 3))
 
 
 def calculate_mayer(price: float):
