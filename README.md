@@ -11,9 +11,11 @@ Im Kern verwendet *BalanceR* die [ccxt](https://github.com/ccxt/ccxt) Bibliothek
 
 Oder besser gleich in einer isolierten virtuellen Umgebung:
 
-`python -m venv .venv`
-`source .venv/bin/activate`
-`python -m pip install -r requirements.txt`
+```shell
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
 
 Sollen mehrere *BalanceR* Instanzen auf demselben Server betrieben werden, so wird die Installation von [tmux](https://github.com/tmux/tmux/wiki) empfohlen.
 
