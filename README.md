@@ -9,6 +9,12 @@ Im Kern verwendet *BalanceR* die [ccxt](https://github.com/ccxt/ccxt) Bibliothek
 
 `python -m pip install -r requirements.txt`
 
+Oder besser gleich in einer isolierten virtuellen Umgebung:
+
+`python -m venv .venv`
+`source .venv/bin/activate`
+`python -m pip install -r requirements.txt`
+
 Sollen mehrere *BalanceR* Instanzen auf demselben Server betrieben werden, so wird die Installation von [tmux](https://github.com/tmux/tmux/wiki) empfohlen.
 
 `apt install tmux`
@@ -20,7 +26,7 @@ Es können mehrere config Dateien erstellt und dieselbe *balancer.py* Datei zum 
 
 Der Name der zu verwendenden Konfigurationsdatei kann als Parameter, ohne der Dateierweiterung (*.txt*), übergeben werden:
 
-`./balancer.py test`
+`python ./balancer.py test`
 
 Fehlt der Parameter, so fragt das Script bei jedem Start nach dem Namen der Konfigurationsdatei. Diesen gilt es ohne Dateierweiterung (*.txt*) einzugeben. Wird dieser Schritt übersprungen, wird standardmässig die Konfiguration von *config.txt* verwendet.
 

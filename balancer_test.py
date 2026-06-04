@@ -811,7 +811,7 @@ class BalancerTest(unittest.TestCase):
 
     def test_stats_add_same_again_day(self):
         today = {'mBal': 0.999, 'price': 10000}
-        stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")), today)
+        stats: balancer.Stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")), today)
         same_day = {'mBal': 0.666, 'price': 9000}
 
         stats.add_day(int(datetime.date.today().strftime("%Y%j")), same_day)
@@ -825,7 +825,7 @@ class BalancerTest(unittest.TestCase):
         h48 = {'mBal': 0.480, 'price': 10048}
         h24 = {'mBal': 0.240, 'price': 10024}
         today = {'mBal': 0.000, 'price': 10000}
-        stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 3, h72)
+        stats: balancer.Stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 3, h72)
         stats.add_day(int(datetime.date.today().strftime("%Y%j")) - 2, h48)
         stats.add_day(int(datetime.date.today().strftime("%Y%j")) - 1, h24)
         self.assertTrue(len(stats.days) == 3)
@@ -848,7 +848,7 @@ class BalancerTest(unittest.TestCase):
         mock_persist_statistics.assert_not_called()
 
     def test_calculate_statistics_positive_change(self):
-        stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1, {'mBal': 50.1, 'fmBal': 100, 'price': 8000.0})
+        stats: balancer.Stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1, {'mBal': 50.1, 'fmBal': 100, 'price': 8000.0})
         today = balancer.calculate_daily_statistics(100.2, 105, 8800.0, stats, False)
 
         self.assertEqual(100.2, today['mBal'])
@@ -860,7 +860,7 @@ class BalancerTest(unittest.TestCase):
 
     @patch('balancer.persist_statistics')
     def test_calculate_statistics_negative_change(self, mock_persist_statistics):
-        stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1, {'mBal': 150.3, 'fmBal': 100, 'price': 8000.0})
+        stats: balancer.Stats = balancer.Stats(int(datetime.date.today().strftime("%Y%j")) - 1, {'mBal': 150.3, 'fmBal': 100, 'price': 8000.0})
         today = balancer.calculate_daily_statistics(100.2, 90, 7600.0, stats, True)
 
         self.assertEqual(100.2, today['mBal'])

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 import calendar
 import configparser
 import datetime
@@ -511,7 +511,7 @@ def append_balances(part: dict, margin_balance: float, daily: bool):
     """
     price = get_current_price()
     append_wallet_balance(part, price)
-    stats = load_statistics()
+    stats: Stats = load_statistics()
     if CONF.exchange == 'bitmex':
         margin_balance_of_fiat = get_margin_balance_of_fiat()
         today = calculate_daily_statistics(margin_balance, margin_balance_of_fiat['total'], price, stats, daily)
