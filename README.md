@@ -23,8 +23,8 @@ Sollen mehrere *BalanceR* Instanzen auf demselben Server betrieben werden, so wi
 
 ## Inbetriebnahme
 ### Bot Instanzen
-Vor dem erstmaligen Start ist die Konfigurationsdatei *config.txt* mit den gewünschten API Keys und Einstellungen zu ergänzen.
-Es können mehrere config Dateien erstellt und dieselbe *balancer.py* Datei zum Start verwendet werden.
+Vor dem erstmaligen Start ist die Konfigurationsdatei *config.txt* mit den gewünschten API-Keys und Einstellungen zu ergänzen.
+Es können mehrere Konfigurationsdateien erstellt und dieselbe *balancer.py* Datei zum Start verwendet werden.
 
 Der Name der zu verwendenden Konfigurationsdatei kann als Parameter, ohne der Dateierweiterung (*.txt*), übergeben werden:
 
@@ -33,7 +33,7 @@ Der Name der zu verwendenden Konfigurationsdatei kann als Parameter, ohne der Da
 Fehlt der Parameter, so fragt das Script bei jedem Start nach dem Namen der Konfigurationsdatei. Diesen gilt es ohne Dateierweiterung (*.txt*) einzugeben. Wird dieser Schritt übersprungen, wird standardmässig die Konfiguration von *config.txt* verwendet.
 
 ### Auto Quote
-Soll ein oder mehrere Bot Instanzen mir Auto Quote (`MM`oder `MMRange`) betrieben werden, so empfiehlt es sich, zusätzlich eine [Mayer](https://github.com/RetGal/MayeR) Instanz laufen zu lassen.
+Soll ein oder mehrere Botinstanzen mir Auto Quote (`MM`oder `MMRange`) betrieben werden, so empfiehlt es sich, zusätzlich eine [Mayer](https://github.com/RetGal/MayeR) Instanz laufen zu lassen.
 
 ## Betrieb
 ### Bot Instanzen
@@ -45,7 +45,7 @@ Voraussetzung ist, dass die *balancer.py* Instanzen innerhalb von *tmux* Session
 
 Wenn also eine Konfigurationsdatei beispielsweise *test1.txt* heisst, dann sollte *balancer.py test1* innerhalb einer *tmux* Session namens *test1* laufen.
 
-Damit *osiris.sh* die *BalanceR*  Instanzen kontinuierlich überwachen kann, muss ein entsprechender *Cronjob* eingerichtet werden:
+Damit *osiris.sh* die *BalanceR* Instanzen kontinuierlich überwachen kann, muss ein entsprechender *Cronjob* eingerichtet werden:
 
 `*/5 *   *   *   *   /home/bot/balancer/osiris.sh`
 
@@ -53,7 +53,7 @@ Die beiden Dateien *balancer.py* und *osiris.sh* müssen vor dem ersten Start mi
 
 ## Troubleshooting
 
-Jede Instanz erstellt und schreibt in eine eigene Logdatei. Diese heisst so wie die entsprechende Konfigurationsdatei, beindet sich im `log` Verzeichnis endet aber auf *.log*:
+Jede Instanz erstellt und schreibt in eine eigene Logdatei. Diese heisst so wie die entsprechende Konfigurationsdatei, befindet sich im `log` Verzeichnis endet aber auf *.log*:
 
 `test1.log`
 
