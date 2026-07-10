@@ -53,7 +53,7 @@ class ExchangeConfig:
 
         try:
             props = config['config']
-            self.bot_version = '1.5.5'
+            self.bot_version = '1.5.6'
             self.exchange = str(props['exchange']).strip('"').lower()
             self.api_key = str(props['api_key']).strip('"')
             self.api_secret = str(props['api_secret']).strip('"')
@@ -1086,7 +1086,7 @@ def connect_to_exchange():
 
 def write_control_file():
     with open(f'{DATA_DIR}{INSTANCE}.pid', 'w') as file:
-        file.write(str(os.getpid()) + ' ' + INSTANCE)
+        file.write(str(os.getpid()) + ' ' + INSTANCE + '\n')
 
 
 def do_buy(quote: float, amount: float, reference_price: float, attempt: int):
